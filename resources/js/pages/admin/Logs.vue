@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import { ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
@@ -122,14 +123,17 @@ function formatDate(value: string | null): string {
 
     <h1 class="sr-only">Logok</h1>
 
-    <div class="space-y-6 px-4 py-6">
+    <div class="nova-page space-y-6 px-6 py-8">
         <Heading
             variant="small"
+            eyebrow="Telemetria"
             title="Logok"
             description="Minden felhasználó beküldött promptjai és a hozzájuk tartozó válaszok"
         />
 
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div
+            class="flex flex-col gap-3 rounded-lg border border-border bg-surface-200 p-4 sm:flex-row sm:items-center"
+        >
             <Input
                 v-model="search"
                 type="search"
@@ -204,53 +208,70 @@ function formatDate(value: string | null): string {
 
         <div
             v-if="logs.data.length === 0"
-            class="rounded-lg border p-8 text-center text-sm text-muted-foreground"
+            class="rounded-lg border border-border bg-surface-100 p-8 text-center text-sm text-ink-muted"
         >
             Nincs a szűrésnek megfelelő log.
         </div>
 
-        <div v-else class="divide-y rounded-lg border">
+        <div
+            v-else
+            class="overflow-hidden rounded-lg border border-border bg-surface-100 shadow-raised"
+        >
             <div
-                v-for="log in logs.data"
-                :key="log.id"
-                class="cursor-pointer space-y-2 p-4 hover:bg-muted/40"
-                @click="toggleExpanded(log.id)"
+                class="flex items-center justify-between border-b border-border bg-surface-200 px-5 py-3"
             >
-                <div class="flex flex-wrap items-center gap-2 text-sm">
-                    <Badge :variant="log.success ? 'secondary' : 'destructive'">
-                        {{ log.success ? 'Siker' : 'Hiba' }}
-                    </Badge>
-                    <span
-                        v-if="log.user"
-                        class="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-                        >{{ log.user.name }}</span
+                <span class="nova-label">Naplósorok</span>
+                <span class="nova-label text-ink-muted"
+                    >{{ logs.total }} bejegyzés</span
+                >
+            </div>
+
+            <div class="divide-y divide-border">
+                <div
+                    v-for="log in logs.data"
+                    :key="log.id"
+                    class="cursor-pointer space-y-2 p-5 transition-colors duration-[120ms] ease-out hover:bg-surface-200"
+                    @click="toggleExpanded(log.id)"
+                >
+                    <div class="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge :variant="log.success ? 'ok' : 'alert'">
+                            {{ log.success ? 'Siker' : 'Hiba' }}
+                        </Badge>
+                        <span
+                            v-if="log.user"
+                            class="nova-code inline-flex h-7 items-center rounded-sm border border-plasma bg-plasma-deep px-2 text-plasma"
+                            >{{ log.user.name }}</span
+                        >
+                        <span
+                            v-if="log.api_key"
+                            class="nova-code inline-flex h-7 items-center rounded-sm border border-border bg-surface-200 px-2 text-ink-muted"
+                            >{{ log.api_key.name }}</span
+                        >
+                        <span v-else class="nova-code text-ink-faint"
+                            >(törölt kulcs)</span
+                        >
+                        <span class="nova-code ml-auto text-ink-faint">{{
+                            formatDate(log.created_at)
+                        }}</span>
+                    </div>
+
+                    <p
+                        class="font-medium text-ink"
+                        :class="{ 'line-clamp-2': expanded !== log.id }"
                     >
-                    <span
-                        v-if="log.api_key"
-                        class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                        >{{ log.api_key.name }}</span
+                        {{ log.prompt }}
+                    </p>
+
+                    <p
+                        class="nova-code whitespace-pre-wrap"
+                        :class="[
+                            log.error ? 'text-signal-alert' : 'text-ink-muted',
+                            { 'line-clamp-3': expanded !== log.id },
+                        ]"
                     >
-                    <span v-else class="text-xs text-muted-foreground"
-                        >(törölt kulcs)</span
-                    >
-                    <span class="ml-auto text-xs text-muted-foreground">{{
-                        formatDate(log.created_at)
-                    }}</span>
+                        {{ log.error ?? log.response ?? '—' }}
+                    </p>
                 </div>
-
-                <p
-                    class="font-medium"
-                    :class="{ 'line-clamp-2': expanded !== log.id }"
-                >
-                    {{ log.prompt }}
-                </p>
-
-                <p
-                    class="text-sm whitespace-pre-wrap text-muted-foreground"
-                    :class="{ 'line-clamp-3': expanded !== log.id }"
-                >
-                    {{ log.error ?? log.response ?? '—' }}
-                </p>
             </div>
         </div>
 
@@ -258,7 +279,7 @@ function formatDate(value: string | null): string {
             v-if="logs.total > 0"
             class="flex items-center justify-between gap-4"
         >
-            <p class="text-sm text-muted-foreground">
+            <p class="nova-code text-ink-faint">
                 {{ logs.from }}–{{ logs.to }} / {{ logs.total }}
             </p>
 
@@ -276,11 +297,12 @@ function formatDate(value: string | null): string {
                         :href="logs.prev_page_url ?? '#'"
                         preserve-scroll
                         preserve-state
-                        >Előző</Link
+                    >
+                        <ChevronLeft /> Előző</Link
                     >
                 </Button>
 
-                <span class="text-sm text-muted-foreground"
+                <span class="nova-code text-ink-faint"
                     >{{ logs.current_page }} / {{ logs.last_page }}</span
                 >
 
@@ -297,7 +319,8 @@ function formatDate(value: string | null): string {
                         :href="logs.next_page_url ?? '#'"
                         preserve-scroll
                         preserve-state
-                        >Következő</Link
+                    >
+                        <ChevronRight /> Következő</Link
                     >
                 </Button>
             </div>

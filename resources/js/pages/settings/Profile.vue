@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, usePage } from '@inertiajs/vue3';
+import { Check } from '@lucide/vue';
 import { computed } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/DeleteUser.vue';
@@ -72,9 +73,13 @@ const user = computed(() => page.props.auth.user);
             </div>
 
             <div class="flex items-center gap-4">
-                <Button :disabled="processing" data-test="update-profile-button"
-                    >Mentés</Button
+                <Button
+                    :disabled="processing"
+                    data-test="update-profile-button"
                 >
+                    <Check />
+                    Mentés
+                </Button>
             </div>
         </Form>
     </div>

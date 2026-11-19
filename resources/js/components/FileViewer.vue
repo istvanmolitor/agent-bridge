@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { watch, ref } from "vue";
-import { file as fileRoute } from "@/routes/admin/workspaces";
+import { watch, ref } from 'vue';
+import { file as fileRoute } from '@/routes/admin/workspaces';
 
 const props = defineProps<{
     workspaceId: number;
@@ -29,10 +29,10 @@ async function load(path: string) {
             fileRoute.url(props.workspaceId, { query: { path } }),
             {
                 headers: {
-                    Accept: "application/json",
-                    "X-Requested-With": "XMLHttpRequest",
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
-                credentials: "same-origin",
+                credentials: 'same-origin',
             },
         );
 
@@ -42,7 +42,7 @@ async function load(path: string) {
 
         content.value = (await response.json()) as FileContent;
     } catch {
-        error.value = "Nem sikerült megnyitni a filet.";
+        error.value = 'Nem sikerült megnyitni a filet.';
     } finally {
         loading.value = false;
     }
@@ -64,38 +64,32 @@ watch(
 
 <template>
     <div class="flex h-full flex-col">
-        <div class="border-b px-3 py-1.5">
-            <span class="truncate text-xs font-medium text-muted-foreground">
-                {{ name ?? "Nincs megnyitott file" }}
+        <div class="border-b border-border bg-surface-200 px-3 py-2">
+            <span class="nova-label truncate">
+                {{ name ?? 'Nincs megnyitott file' }}
             </span>
         </div>
 
         <div class="min-h-0 flex-1 overflow-auto">
-            <p
-                v-if="!path"
-                class="p-4 text-sm text-muted-foreground"
-            >
+            <p v-if="!path" class="p-4 text-sm text-ink-muted">
                 Válassz egy filet a fából a megtekintéshez.
             </p>
-            <p v-else-if="loading" class="p-4 text-sm text-muted-foreground">
+            <p v-else-if="loading" class="p-4 text-sm text-ink-muted">
                 Betöltés…
             </p>
-            <p v-else-if="error" class="p-4 text-sm text-destructive">
+            <p v-else-if="error" class="p-4 text-sm text-signal-alert">
                 {{ error }}
             </p>
-            <p
-                v-else-if="content?.binary"
-                class="p-4 text-sm text-muted-foreground"
-            >
+            <p v-else-if="content?.binary" class="p-4 text-sm text-ink-muted">
                 Bináris file — nem jeleníthető meg.
             </p>
             <template v-else-if="content">
                 <pre
-                    class="p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words"
-                >{{ content.content }}</pre>
+                    class="nova-code p-4 break-words whitespace-pre-wrap text-ink"
+                    >{{ content.content }}</pre>
                 <p
                     v-if="content.truncated"
-                    class="border-t px-4 py-2 text-xs text-muted-foreground"
+                    class="nova-code border-t border-border px-4 py-2 text-ink-faint"
                 >
                     A file túl nagy — csak az eleje látszik.
                 </p>

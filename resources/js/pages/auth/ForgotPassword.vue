@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { Mail } from '@lucide/vue';
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,8 @@ import { email } from '@/routes/password';
 defineOptions({
     layout: {
         title: 'Elfelejtett jelszó',
-        description: 'Add meg az email címedet a jelszó-visszaállító link megküldéséhez',
+        description:
+            'Add meg az email címedet a jelszó-visszaállító link megküldéséhez',
     },
 });
 
@@ -53,6 +55,7 @@ defineProps<{
                     data-test="email-password-reset-link-button"
                 >
                     <Spinner v-if="processing" />
+                    <Mail v-else />
                     Jelszó-visszaállító link küldése
                 </Button>
             </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useHttp } from "@inertiajs/vue3";
+import { Head, router, useHttp } from '@inertiajs/vue3';
 import {
     ChevronDown,
     ChevronRight,
@@ -8,13 +8,14 @@ import {
     Plus,
     RefreshCw,
     SendHorizontal,
-} from "@lucide/vue";
-import { computed, nextTick, ref, watch, type Ref } from "vue";
-import FileTree from "@/components/FileTree.vue";
-import FileViewer from "@/components/FileViewer.vue";
-import Heading from "@/components/Heading.vue";
-import InputError from "@/components/InputError.vue";
-import { Button } from "@/components/ui/button";
+    X,
+} from '@lucide/vue';
+import { computed, nextTick, ref, watch, type Ref } from 'vue';
+import FileTree from '@/components/FileTree.vue';
+import FileViewer from '@/components/FileViewer.vue';
+import Heading from '@/components/Heading.vue';
+import InputError from '@/components/InputError.vue';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogClose,
@@ -23,18 +24,18 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { index, run } from "@/routes/admin/chat";
-import { store as storeSession } from "@/routes/admin/chat/sessions";
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { index, run } from '@/routes/admin/chat';
+import { store as storeSession } from '@/routes/admin/chat/sessions';
 
 type Agent = { id: number; name: string };
 type Workspace = { id: number; name: string };
@@ -69,7 +70,7 @@ defineOptions({
     layout: {
         breadcrumbs: [
             {
-                title: "Chat",
+                title: 'Chat',
                 href: index(),
             },
         ],
@@ -81,7 +82,7 @@ const canCreate = computed(
 );
 
 const http = useHttp<{ prompt: string; agent_session_id: string | null }>({
-    prompt: "",
+    prompt: '',
     agent_session_id:
         props.selectedSessionId ??
         (props.sessions[0] ? String(props.sessions[0].id) : null),
@@ -189,7 +190,7 @@ watch(
     () => http.agent_session_id,
     (id) => {
         router.reload({
-            only: ["logs", "selectedSessionId"],
+            only: ['logs', 'selectedSessionId'],
             data: { agent_session_id: id ?? undefined },
         });
     },
@@ -222,13 +223,13 @@ function toggleResponse(id: number) {
 }
 
 function scrollToBottom() {
-    nextTick(() => chatEnd.value?.scrollIntoView({ block: "end" }));
+    nextTick(() => chatEnd.value?.scrollIntoView({ block: 'end' }));
 }
 
 function submit() {
     if (
         http.processing ||
-        http.prompt.trim() === "" ||
+        http.prompt.trim() === '' ||
         !http.agent_session_id
     ) {
         return;
@@ -236,9 +237,9 @@ function submit() {
 
     http.post(run.url(), {
         onSuccess: () => {
-            http.prompt = "";
+            http.prompt = '';
             router.reload({
-                only: ["logs", "sessions", "selectedSessionId"],
+                only: ['logs', 'sessions', 'selectedSessionId'],
                 data: { agent_session_id: http.agent_session_id ?? undefined },
             });
             // The agent may have changed files in the workspace.
@@ -248,11 +249,11 @@ function submit() {
 }
 
 function sessionTitle(session: Session): string {
-    return session.agent?.name ?? "Ügynök";
+    return session.agent?.name ?? 'Ügynök';
 }
 
 function formatDate(value: string | null): string {
-    return value ? new Date(value).toLocaleString("hu-HU") : "";
+    return value ? new Date(value).toLocaleString('hu-HU') : '';
 }
 </script>
 
@@ -263,8 +264,8 @@ function formatDate(value: string | null): string {
 
     <div class="flex h-[calc(100svh-4rem)] min-h-0">
         <!-- Sessions sidebar -->
-        <aside class="flex w-72 shrink-0 flex-col border-r">
-            <div class="border-b p-3">
+        <aside class="flex w-72 shrink-0 flex-col border-r border-border">
+            <div class="border-b border-border p-3">
                 <Button
                     class="w-full"
                     :disabled="!canCreate"
@@ -284,7 +285,7 @@ function formatDate(value: string | null): string {
             <div class="min-h-0 flex-1 overflow-y-auto">
                 <p
                     v-if="sessions.length === 0"
-                    class="p-4 text-sm text-muted-foreground"
+                    class="p-4 text-sm text-ink-muted"
                 >
                     Még nincs munkamenet.
                 </p>
@@ -293,32 +294,37 @@ function formatDate(value: string | null): string {
                     v-for="session in sessions"
                     :key="session.id"
                     type="button"
-                    class="flex w-full flex-col items-start gap-0.5 border-b px-3 py-2 text-left text-sm hover:bg-muted/50"
+                    class="flex w-full flex-col items-start gap-1 border-b border-border px-3 py-2.5 text-left text-sm transition-colors duration-[120ms] ease-out hover:bg-surface-200"
                     :class="{
-                        'bg-muted':
+                        'bg-plasma-deep text-plasma shadow-[inset_2px_0_0_var(--plasma)]':
                             String(session.id) === http.agent_session_id,
                     }"
                     @click="selectSession(session)"
                 >
                     <span class="font-medium">{{ sessionTitle(session) }}</span>
                     <span
-                        class="flex items-center gap-1 text-xs text-muted-foreground"
+                        class="nova-code flex items-center gap-1.5 text-ink-muted"
                     >
                         <Folder class="h-3 w-3 shrink-0" />
-                        {{ session.workspace?.name ?? "—" }}
+                        {{ session.workspace?.name ?? '—' }}
                     </span>
-                    <span class="text-xs text-muted-foreground">
-                        {{ formatDate(session.last_used_at ?? session.created_at) }}
+                    <span class="nova-code text-ink-faint">
+                        {{
+                            formatDate(
+                                session.last_used_at ?? session.created_at,
+                            )
+                        }}
                     </span>
                 </button>
             </div>
         </aside>
 
         <!-- Chat area -->
-        <section class="flex min-h-0 min-w-0 flex-1 flex-col gap-4 px-4 py-6">
+        <section class="flex min-h-0 min-w-0 flex-1 flex-col gap-4 px-6 py-6">
             <div class="flex items-start justify-between gap-3">
                 <Heading
                     variant="small"
+                    eyebrow="Munkamenet"
                     title="Chat"
                     description="Beszélgess a kiválasztott munkamenet ügynökével."
                 />
@@ -352,7 +358,7 @@ function formatDate(value: string | null): string {
 
             <div
                 v-if="sessions.length === 0"
-                class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+                class="flex flex-1 items-center justify-center text-sm text-ink-muted"
             >
                 Hozz létre egy munkamenetet a bal oldali gombbal.
             </div>
@@ -360,12 +366,12 @@ function formatDate(value: string | null): string {
             <template v-else>
                 <!-- Chat transcript -->
                 <div
-                    class="min-h-0 flex-1 space-y-4 overflow-y-auto rounded-lg border bg-muted/20 p-4"
+                    class="nova-grid min-h-0 flex-1 space-y-4 overflow-y-auto rounded-lg border border-border bg-surface-void p-4"
                     data-test="chat-transcript"
                 >
                     <p
                         v-if="logs.length === 0"
-                        class="py-8 text-center text-sm text-muted-foreground"
+                        class="py-8 text-center text-sm text-ink-muted"
                     >
                         Még nincs üzenet ebben a munkamenetben. Kérdezz valamit
                         lent.
@@ -375,11 +381,11 @@ function formatDate(value: string | null): string {
                         <!-- User prompt (collapsible) -->
                         <div class="flex justify-end">
                             <div
-                                class="max-w-[85%] overflow-hidden rounded-2xl rounded-br-sm bg-primary text-primary-foreground"
+                                class="max-w-[85%] overflow-hidden rounded-md border border-plasma bg-plasma-deep text-ink"
                             >
                                 <button
                                     type="button"
-                                    class="flex w-full items-center gap-2 px-4 py-2 text-left text-xs text-primary-foreground/80 hover:bg-black/10"
+                                    class="nova-label flex w-full items-center gap-2 px-4 py-2 text-left text-plasma hover:bg-surface-300/40"
                                     @click="togglePrompt(log.id)"
                                 >
                                     <ChevronDown
@@ -397,10 +403,11 @@ function formatDate(value: string | null): string {
                                 </button>
 
                                 <p
-                                    class="px-4 pb-3 text-sm whitespace-pre-wrap"
+                                    class="nova-code px-4 pb-3 whitespace-pre-wrap"
                                     :class="{
-                                        'line-clamp-4':
-                                            !isPromptExpanded(log.id),
+                                        'line-clamp-4': !isPromptExpanded(
+                                            log.id,
+                                        ),
                                     }"
                                 >
                                     {{ log.prompt }}
@@ -411,11 +418,11 @@ function formatDate(value: string | null): string {
                         <!-- Agent response (collapsible) -->
                         <div class="flex justify-start">
                             <div
-                                class="max-w-[85%] overflow-hidden rounded-2xl rounded-bl-sm border bg-background"
+                                class="max-w-[85%] overflow-hidden rounded-md border border-border bg-surface-100"
                             >
                                 <button
                                     type="button"
-                                    class="flex w-full items-center gap-2 px-4 py-2 text-left text-xs text-muted-foreground hover:bg-muted/50"
+                                    class="nova-label flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-surface-200"
                                     @click="toggleResponse(log.id)"
                                 >
                                     <ChevronDown
@@ -429,11 +436,11 @@ function formatDate(value: string | null): string {
                                     <span
                                         :class="
                                             log.success
-                                                ? 'text-muted-foreground'
-                                                : 'font-medium text-destructive'
+                                                ? 'text-signal-ok'
+                                                : 'text-signal-alert'
                                         "
                                     >
-                                        {{ log.success ? "Válasz" : "Hiba" }}
+                                        {{ log.success ? 'Válasz' : 'Hiba' }}
                                     </span>
                                     <span class="ml-auto">{{
                                         formatDate(log.created_at)
@@ -441,13 +448,19 @@ function formatDate(value: string | null): string {
                                 </button>
 
                                 <p
-                                    class="px-4 pb-3 text-sm whitespace-pre-wrap"
-                                    :class="{
-                                        'line-clamp-4':
-                                            !isResponseExpanded(log.id),
-                                    }"
+                                    class="nova-code px-4 pb-3 whitespace-pre-wrap"
+                                    :class="[
+                                        log.error
+                                            ? 'text-signal-alert'
+                                            : 'text-ink',
+                                        {
+                                            'line-clamp-4': !isResponseExpanded(
+                                                log.id,
+                                            ),
+                                        },
+                                    ]"
                                 >
-                                    {{ log.error ?? log.response ?? "—" }}
+                                    {{ log.error ?? log.response ?? '—' }}
                                 </p>
                             </div>
                         </div>
@@ -503,8 +516,7 @@ function formatDate(value: string | null): string {
             <DialogHeader class="space-y-3">
                 <DialogTitle>Új munkamenet</DialogTitle>
                 <DialogDescription>
-                    Válassz egy ügynököt és egy munkaterületet a
-                    beszélgetéshez.
+                    Válassz egy ügynököt és egy munkaterületet a beszélgetéshez.
                 </DialogDescription>
             </DialogHeader>
 
@@ -546,7 +558,7 @@ function formatDate(value: string | null): string {
 
             <DialogFooter class="gap-2">
                 <DialogClose as-child>
-                    <Button variant="secondary">Mégse</Button>
+                    <Button variant="secondary"> <X /> Mégse</Button>
                 </DialogClose>
                 <Button
                     type="button"
@@ -554,6 +566,7 @@ function formatDate(value: string | null): string {
                     data-test="chat-create-session"
                     @click="createSession"
                 >
+                    <Plus />
                     Létrehozás
                 </Button>
             </DialogFooter>
@@ -565,10 +578,10 @@ function formatDate(value: string | null): string {
         <DialogContent
             class="flex h-[95vh] w-[95vw] max-w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[95vw]"
         >
-            <DialogHeader class="border-b px-4 py-3">
+            <DialogHeader class="border-b border-border px-4 py-3">
                 <DialogTitle>
                     Munkaterület
-                    <span v-if="workspace" class="text-muted-foreground">
+                    <span v-if="workspace" class="nova-code text-ink-faint">
                         — {{ workspace.name }}</span
                     >
                 </DialogTitle>
@@ -576,7 +589,7 @@ function formatDate(value: string | null): string {
 
             <div
                 v-if="workspace"
-                class="grid min-h-0 flex-1 grid-cols-[1fr_2fr] divide-x"
+                class="grid min-h-0 flex-1 grid-cols-[1fr_2fr] divide-x divide-border"
             >
                 <div class="min-h-0 overflow-hidden">
                     <FileTree
@@ -596,7 +609,7 @@ function formatDate(value: string | null): string {
                 </div>
             </div>
 
-            <p v-else class="p-4 text-sm text-muted-foreground">
+            <p v-else class="p-4 text-sm text-ink-muted">
                 Ehhez a munkamenethez nincs munkaterület rendelve.
             </p>
         </DialogContent>

@@ -12,8 +12,42 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
             fonts: [
-                bunny('Instrument Sans', {
+                // Nova: display — cím és gombfelirat.
+                bunny('Chakra Petch', {
+                    variable: '--nova-font-display',
+                    weights: [600, 700],
+                    subsets: ['latin', 'latin-ext'],
+                    fallbacks: [
+                        'Bahnschrift',
+                        'DIN Alternate',
+                        'system-ui',
+                        'sans-serif',
+                    ],
+                }),
+                // Nova: sans — minden futó szöveg.
+                bunny('Space Grotesk', {
+                    variable: '--nova-font-sans',
                     weights: [400, 500, 600],
+                    subsets: ['latin', 'latin-ext'],
+                    fallbacks: [
+                        'Avenir Next',
+                        'system-ui',
+                        'Segoe UI',
+                        'sans-serif',
+                    ],
+                }),
+                // Nova: mono — szám, kód, azonosító, mikrofelirat.
+                bunny('JetBrains Mono', {
+                    variable: '--nova-font-mono',
+                    weights: [400, 500, 600],
+                    subsets: ['latin', 'latin-ext'],
+                    fallbacks: [
+                        'ui-monospace',
+                        'SFMono-Regular',
+                        'Menlo',
+                        'Consolas',
+                        'monospace',
+                    ],
                 }),
             ],
         }),

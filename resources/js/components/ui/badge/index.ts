@@ -3,19 +3,22 @@ import { cva } from "class-variance-authority"
 
 export { default as Badge } from "./Badge.vue"
 
+// Nova StatusBadge: mono mikrofelirat, currentColor keret, surface-200 ágy.
+// Az állapotot szín és szó együtt jelzi — a szín önmagában soha.
 export const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  "inline-flex h-7 w-fit shrink-0 items-center justify-center gap-2 overflow-hidden rounded-sm border border-current bg-surface-200 px-3 font-mono text-[11px] font-semibold tracking-[0.14em] whitespace-nowrap uppercase [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive:
-         "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        default: "text-primary",
+        secondary: "text-ink-muted",
+        destructive: "text-signal-alert",
+        outline: "bg-transparent text-ink-muted",
+        ok: "text-signal-ok",
+        warn: "text-signal-warn",
+        alert: "text-signal-alert",
+        live: "text-ember",
+        idle: "text-ink-muted",
       },
     },
     defaultVariants: {

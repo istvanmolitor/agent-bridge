@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import { Trash2, X } from '@lucide/vue';
 import { useTemplateRef } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/Heading.vue';
@@ -39,9 +40,13 @@ const passwordInput = useTemplateRef('passwordInput');
             </div>
             <Dialog>
                 <DialogTrigger as-child>
-                    <Button variant="destructive" data-test="delete-user-button"
-                        >Fiók törlése</Button
+                    <Button
+                        variant="destructive"
+                        data-test="delete-user-button"
                     >
+                        <Trash2 />
+                        Fiók törlése
+                    </Button>
                 </DialogTrigger>
                 <DialogContent>
                     <Form
@@ -60,16 +65,14 @@ const passwordInput = useTemplateRef('passwordInput');
                                 fiókodat?</DialogTitle
                             >
                             <DialogDescription>
-                                A fiók törlése után minden hozzá tartozó
-                                adat és erőforrás véglegesen törlődik. Add
-                                meg a jelszavadat a megerősítéshez.
+                                A fiók törlése után minden hozzá tartozó adat és
+                                erőforrás véglegesen törlődik. Add meg a
+                                jelszavadat a megerősítéshez.
                             </DialogDescription>
                         </DialogHeader>
 
                         <div class="grid gap-2">
-                            <Label for="password" class="sr-only"
-                                >Jelszó</Label
-                            >
+                            <Label for="password" class="sr-only">Jelszó</Label>
                             <PasswordInput
                                 id="password"
                                 name="password"
@@ -90,6 +93,7 @@ const passwordInput = useTemplateRef('passwordInput');
                                         }
                                     "
                                 >
+                                    <X />
                                     Mégse
                                 </Button>
                             </DialogClose>
@@ -100,6 +104,7 @@ const passwordInput = useTemplateRef('passwordInput');
                                 :disabled="processing"
                                 data-test="confirm-delete-user-button"
                             >
+                                <Trash2 />
                                 Fiók törlése
                             </Button>
                         </DialogFooter>

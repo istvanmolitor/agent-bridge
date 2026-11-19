@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import { Bot, Check, Copy, Folder, KeyRound } from '@lucide/vue';
+import {
+    Bot,
+    Check,
+    Copy,
+    Folder,
+    KeyRound,
+    Plus,
+    Trash2,
+    X,
+} from '@lucide/vue';
 import { ref } from 'vue';
 import ApiKeyController from '@/actions/App/Http/Controllers/Admin/ApiKeyController';
 import Heading from '@/components/Heading.vue';
@@ -86,10 +95,11 @@ async function copyRowToken(apiKey: ApiKey) {
 
     <h1 class="sr-only">API kulcsok</h1>
 
-    <div class="space-y-6 px-4 py-6">
-        <div class="flex items-center justify-between gap-4">
+    <div class="nova-page space-y-6 px-6 py-8">
+        <div class="flex flex-wrap items-end justify-between gap-4">
             <Heading
                 variant="small"
+                eyebrow="Hozzáférés"
                 title="API kulcsok"
                 description="Kulcsok generálása a prompt API külső alkalmazásokból történő hívásához"
             />
@@ -98,7 +108,9 @@ async function copyRowToken(apiKey: ApiKey) {
                 <DialogTrigger as-child>
                     <Button
                         data-test="create-api-key-button"
-                        :disabled="agents.length === 0 || workspaces.length === 0"
+                        :disabled="
+                            agents.length === 0 || workspaces.length === 0
+                        "
                         :title="
                             agents.length === 0
                                 ? 'Előbb hozz létre egy ügynököt'
@@ -106,7 +118,8 @@ async function copyRowToken(apiKey: ApiKey) {
                                   ? 'Előbb hozz létre egy munkaterületet'
                                   : undefined
                         "
-                        >Új kulcs</Button
+                    >
+                        <Plus /> Új kulcs</Button
                     >
                 </DialogTrigger>
                 <DialogContent>
@@ -200,6 +213,7 @@ async function copyRowToken(apiKey: ApiKey) {
                                         }
                                     "
                                 >
+                                    <X />
                                     Mégse
                                 </Button>
                             </DialogClose>
@@ -209,6 +223,7 @@ async function copyRowToken(apiKey: ApiKey) {
                                 :disabled="processing"
                                 data-test="confirm-create-api-key-button"
                             >
+                                <Plus />
                                 Kulcs létrehozása
                             </Button>
                         </DialogFooter>
@@ -217,112 +232,153 @@ async function copyRowToken(apiKey: ApiKey) {
             </Dialog>
         </div>
 
-        <div v-if="apiKeys.length === 0" class="text-sm text-muted-foreground">
+        <div
+            v-if="apiKeys.length === 0"
+            class="rounded-lg border border-border bg-surface-100 p-8 text-center text-sm text-ink-muted"
+        >
             Még nincs API kulcsod.
         </div>
 
-        <div v-else class="divide-y rounded-lg border">
+        <div
+            v-else
+            class="overflow-hidden rounded-lg border border-border bg-surface-100 shadow-raised"
+        >
             <div
-                v-for="apiKey in apiKeys"
-                :key="apiKey.id"
-                class="flex items-start gap-4 p-4"
+                class="flex items-center justify-between border-b border-border bg-surface-200 px-5 py-3"
             >
-                <div
-                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+                <span class="nova-label">Kiadott kulcsok</span>
+                <span class="nova-label text-ink-muted"
+                    >{{ apiKeys.length }} kulcs</span
                 >
-                    <KeyRound class="h-4 w-4" />
-                </div>
+            </div>
 
-                <div class="min-w-0 flex-1 space-y-3">
-                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span class="font-medium">{{ apiKey.name }}</span>
-                        <span
-                            v-if="apiKey.agent"
-                            class="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                        >
-                            <Bot class="h-3 w-3" />
-                            {{ apiKey.agent.name }}
-                        </span>
-                        <span
-                            v-if="apiKey.workspace"
-                            class="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                        >
-                            <Folder class="h-3 w-3" />
-                            {{ apiKey.workspace.name }}
-                        </span>
+            <div class="divide-y divide-border">
+                <div
+                    v-for="apiKey in apiKeys"
+                    :key="apiKey.id"
+                    class="flex items-start gap-4 p-5 transition-colors duration-[120ms] ease-out hover:bg-surface-200"
+                >
+                    <div
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-border bg-surface-200 text-plasma"
+                    >
+                        <KeyRound class="h-4 w-4" />
                     </div>
 
-                    <div class="flex max-w-md items-center gap-2">
-                        <Input
-                            :model-value="apiKey.token"
-                            readonly
-                            class="font-mono text-xs"
-                        />
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            class="gap-1.5"
-                            @click="copyRowToken(apiKey)"
+                    <div class="min-w-0 flex-1 space-y-3">
+                        <div
+                            class="flex flex-wrap items-center gap-x-2 gap-y-1"
                         >
-                            <Check
-                                v-if="copiedRowId === apiKey.id"
-                                class="h-3.5 w-3.5"
+                            <span class="font-medium text-ink">{{
+                                apiKey.name
+                            }}</span>
+                            <span
+                                v-if="apiKey.agent"
+                                class="nova-code inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface-200 px-2 py-0.5 text-ink-muted"
+                            >
+                                <Bot class="h-3 w-3" />
+                                {{ apiKey.agent.name }}
+                            </span>
+                            <span
+                                v-if="apiKey.workspace"
+                                class="nova-code inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface-200 px-2 py-0.5 text-ink-muted"
+                            >
+                                <Folder class="h-3 w-3" />
+                                {{ apiKey.workspace.name }}
+                            </span>
+                        </div>
+
+                        <div class="flex max-w-md items-center gap-2">
+                            <Input
+                                :model-value="apiKey.token"
+                                readonly
+                                class="text-ink-muted"
                             />
-                            <Copy v-else class="h-3.5 w-3.5" />
-                            {{
-                                copiedRowId === apiKey.id
-                                    ? 'Kimásolva'
-                                    : 'Másolás'
-                            }}
-                        </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                class="gap-1.5"
+                                @click="copyRowToken(apiKey)"
+                            >
+                                <Check
+                                    v-if="copiedRowId === apiKey.id"
+                                    class="h-3.5 w-3.5"
+                                />
+                                <Copy v-else class="h-3.5 w-3.5" />
+                                {{
+                                    copiedRowId === apiKey.id
+                                        ? 'Kimásolva'
+                                        : 'Másolás'
+                                }}
+                            </Button>
+                        </div>
+
+                        <dl class="flex flex-wrap gap-x-8 gap-y-2">
+                            <div>
+                                <dt class="nova-label">Létrehozva</dt>
+                                <dd class="nova-code text-ink-muted">
+                                    {{ formatDate(apiKey.created_at) }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="nova-label">Utoljára használva</dt>
+                                <dd class="nova-code text-ink-muted">
+                                    {{ formatDate(apiKey.last_used_at) }}
+                                </dd>
+                            </div>
+                        </dl>
                     </div>
 
-                    <p class="text-xs text-muted-foreground">
-                        Létrehozva: {{ formatDate(apiKey.created_at) }} ·
-                        Utoljára használva:
-                        {{ formatDate(apiKey.last_used_at) }}
-                    </p>
+                    <Dialog>
+                        <DialogTrigger as-child>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                class="text-signal-alert hover:text-signal-alert"
+                            >
+                                <Trash2 /> Törlés</Button
+                            >
+                        </DialogTrigger>
+                        <DialogContent>
+                            <Form
+                                v-bind="
+                                    ApiKeyController.destroy.form(apiKey.id)
+                                "
+                                :options="{ preserveScroll: true }"
+                                class="space-y-6"
+                                v-slot="{ processing }"
+                            >
+                                <DialogHeader class="space-y-3">
+                                    <DialogTitle
+                                        >Törlöd a(z) "{{ apiKey.name }}"
+                                        kulcsot?</DialogTitle
+                                    >
+                                    <DialogDescription>
+                                        Az ezt a kulcsot használó alkalmazások
+                                        azonnal elveszítik a hozzáférést. Ez nem
+                                        vonható vissza.
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <DialogFooter class="gap-2">
+                                    <DialogClose as-child>
+                                        <Button variant="secondary">
+                                            <X /> Mégse</Button
+                                        >
+                                    </DialogClose>
+
+                                    <Button
+                                        type="submit"
+                                        variant="destructive"
+                                        :disabled="processing"
+                                    >
+                                        <Trash2 />
+                                        Kulcs törlése
+                                    </Button>
+                                </DialogFooter>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
-
-                <Dialog>
-                    <DialogTrigger as-child>
-                        <Button variant="destructive" size="sm">Törlés</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <Form
-                            v-bind="ApiKeyController.destroy.form(apiKey.id)"
-                            :options="{ preserveScroll: true }"
-                            class="space-y-6"
-                            v-slot="{ processing }"
-                        >
-                            <DialogHeader class="space-y-3">
-                                <DialogTitle
-                                    >Törlöd a(z) "{{ apiKey.name }}"
-                                    kulcsot?</DialogTitle
-                                >
-                                <DialogDescription>
-                                    Az ezt a kulcsot használó alkalmazások
-                                    azonnal elveszítik a hozzáférést. Ez nem
-                                    vonható vissza.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <DialogFooter class="gap-2">
-                                <DialogClose as-child>
-                                    <Button variant="secondary">Mégse</Button>
-                                </DialogClose>
-
-                                <Button
-                                    type="submit"
-                                    variant="destructive"
-                                    :disabled="processing"
-                                >
-                                    Kulcs törlése
-                                </Button>
-                            </DialogFooter>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
             </div>
         </div>
     </div>

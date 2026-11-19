@@ -24,9 +24,9 @@ const modelValue = useVModel(props, "modelValue", emits, {
     v-model="modelValue"
     data-slot="textarea"
     :class="cn(
-      'placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input min-h-24 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-      'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
-      'aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive',
+      'placeholder:text-ink-faint selection:bg-plasma-deep selection:text-ink border-input bg-surface-100 text-ink min-h-24 w-full rounded-sm border px-3 py-2 font-mono text-[13px] leading-5 transition-[border-color,box-shadow] duration-[120ms] ease-out disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45',
+      'hover:not-disabled:border-plasma',
+      'aria-invalid:border-destructive',
       props.class,
     )"
   />

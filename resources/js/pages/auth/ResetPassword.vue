@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { KeyRound } from '@lucide/vue';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
@@ -64,9 +65,7 @@ const inputEmail = ref(props.email);
             </div>
 
             <div class="grid gap-2">
-                <Label for="password_confirmation">
-                    Jelszó megerősítése
-                </Label>
+                <Label for="password_confirmation"> Jelszó megerősítése </Label>
                 <PasswordInput
                     id="password_confirmation"
                     name="password_confirmation"
@@ -85,6 +84,7 @@ const inputEmail = ref(props.email);
                 data-test="reset-password-button"
             >
                 <Spinner v-if="processing" />
+                <KeyRound v-else />
                 Jelszó visszaállítása
             </Button>
         </div>

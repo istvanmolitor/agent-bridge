@@ -7,16 +7,78 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Nova design system
+ * Sűrű, adatvezérelt felületek rendszere: a fény mindig jelent valamit,
+ * a forma szögletes, a szám a főszereplő.
+ */
+
 @theme inline {
-    --font-sans:
-        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+    --font-display: var(
+        --nova-font-display,
+        'Chakra Petch',
+        'Bahnschrift',
+        'DIN Alternate',
+        system-ui,
+        sans-serif
+    );
+    --font-sans: var(
+        --nova-font-sans,
+        'Space Grotesk',
+        'Avenir Next',
+        system-ui,
+        'Segoe UI',
+        sans-serif
+    );
+    --font-mono: var(
+        --nova-font-mono,
+        'JetBrains Mono',
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace
+    );
 
-    --radius-lg: var(--radius);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-sm: calc(var(--radius) - 4px);
+    /* Szögletes alaphang: a legnagyobb sugár 12px. */
+    --radius-none: 0;
+    --radius-sm: 3px;
+    --radius-md: 6px;
+    --radius-lg: 12px;
+    --radius-xl: 12px;
+    --radius-2xl: 12px;
+    --radius-3xl: 12px;
 
+    /* Nova paletta közvetlenül használható utility-ként. */
+    --color-surface-void: var(--surface-void);
+    --color-surface-100: var(--surface-100);
+    --color-surface-200: var(--surface-200);
+    --color-surface-300: var(--surface-300);
+    --color-border-subtle: var(--border-subtle);
+    --color-border-strong: var(--border-strong);
+    --color-grid-line: var(--grid-line);
+    --color-ink: var(--ink);
+    --color-ink-muted: var(--ink-muted);
+    --color-ink-faint: var(--ink-faint);
+    --color-plasma: var(--plasma);
+    --color-plasma-deep: var(--plasma-deep);
+    --color-on-plasma: var(--on-plasma);
+    --color-ember: var(--ember);
+    --color-on-ember: var(--on-ember);
+    --color-signal-ok: var(--signal-ok);
+    --color-signal-warn: var(--signal-warn);
+    --color-signal-alert: var(--signal-alert);
+    --color-on-alert: var(--on-alert);
+    --color-focus-ring: var(--focus-ring);
+
+    --shadow-panel: var(--nova-shadow-panel);
+    --shadow-raised: var(--nova-shadow-raised);
+    --shadow-glow-plasma: var(--nova-glow-plasma);
+    --shadow-glow-alert: var(--nova-glow-alert);
+
+    --container-nova: 1200px;
+
+    /* A shadcn szemantikus nevei a Nova tokenekre mutatnak. */
     --color-background: var(--background);
     --color-foreground: var(--foreground);
 
@@ -61,83 +123,257 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Világos téma */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    --surface-void: #f4f6fa;
+    --surface-100: #ffffff;
+    --surface-200: #eef1f7;
+    --surface-300: #e2e7f0;
+    --border-subtle: #dbe1ea;
+    --border-strong: #7d8da1;
+    --grid-line: #e7ecf3;
+    --ink: #0b1018;
+    --ink-muted: #4c5a6d;
+    --ink-faint: #5f6d7e;
+    --plasma: #0b6d74;
+    --plasma-deep: #d5f2f4;
+    --on-plasma: #f2fbfc;
+    --ember: #a1570a;
+    --on-ember: #fff6ec;
+    --signal-ok: #0f7a5c;
+    --signal-warn: #8a5a00;
+    --signal-alert: #b01030;
+    --on-alert: #fff1f3;
+    --focus-ring: #0b6d74;
+    --overlay-scrim: #0a101a73;
+
+    --nova-shadow-panel: 0 10px 28px #0b101814;
+    --nova-shadow-raised: 0 1px 2px #0b10181f, 0 6px 16px #0b101814;
+    --nova-glow-plasma: 0 0 0 1px #0b6d7440, 0 0 16px #0b6d741f;
+    --nova-glow-alert: 0 0 0 1px #b0103040, 0 0 14px #b0103026;
+
+    --background: var(--surface-void);
+    --foreground: var(--ink);
+    --card: var(--surface-100);
+    --card-foreground: var(--ink);
+    --popover: var(--surface-100);
+    --popover-foreground: var(--ink);
+    --primary: var(--plasma);
+    --primary-foreground: var(--on-plasma);
+    --secondary: var(--surface-200);
+    --secondary-foreground: var(--ink);
+    --muted: var(--surface-200);
+    --muted-foreground: var(--ink-muted);
+    --accent: var(--surface-300);
+    --accent-foreground: var(--ink);
+    --destructive: var(--signal-alert);
+    --destructive-foreground: var(--on-alert);
+    --border: var(--border-subtle);
+    --input: var(--border-strong);
+    --ring: var(--focus-ring);
+    --chart-1: var(--plasma);
+    --chart-2: var(--ember);
+    --chart-3: var(--signal-ok);
+    --chart-4: var(--signal-warn);
+    --chart-5: var(--signal-alert);
+    --radius: 12px;
+    --sidebar: var(--surface-void);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--plasma);
+    --sidebar-primary-foreground: var(--on-plasma);
+    --sidebar-accent: var(--surface-200);
+    --sidebar-accent-foreground: var(--ink);
+    --sidebar-border: var(--border-subtle);
+    --sidebar-ring: var(--focus-ring);
 }
 
+/* Sötét téma — a Nova alapértelmezett hangja */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
+    --surface-void: #05070c;
+    --surface-100: #0b1018;
+    --surface-200: #121a26;
+    --surface-300: #1b2634;
+    --border-subtle: #22303f;
+    --border-strong: #5e768e;
+    --grid-line: #16222f;
+    --ink: #e6f0fa;
+    --ink-muted: #9db0c6;
+    --ink-faint: #7a8da4;
+    --plasma: #38e1e6;
+    --plasma-deep: #0f3f48;
+    --on-plasma: #021418;
+    --ember: #ffa94d;
+    --on-ember: #1a0f00;
+    --signal-ok: #4df0c0;
+    --signal-warn: #ffc247;
+    --signal-alert: #ff6b81;
+    --on-alert: #230309;
+    --focus-ring: #7ef0ff;
+    --overlay-scrim: #020a10cc;
+
+    --nova-shadow-panel: 0 18px 40px #00000073;
+    --nova-shadow-raised: 0 2px 0 #00000080, 0 10px 24px #00000059;
+    --nova-glow-plasma: 0 0 0 1px #38e1e659, 0 0 20px #38e1e63d;
+    --nova-glow-alert: 0 0 0 1px #ff6b8166, 0 0 20px #ff6b8140;
 }
 
 @layer base {
     * {
-        @apply border-border outline-ring/50;
+        @apply border-border;
     }
 
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background font-sans text-foreground;
+    }
+
+    /*
+     * Nova: 2px tömör fókuszgyűrű 2px réssel, minden interaktív elemen.
+     * A shadcn komponensek a saját ring utility-jükkel ugyanezt a vastagságot
+     * és rést rajzolják.
+     */
+    :focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background: var(--plasma-deep);
+        color: var(--ink);
+    }
+
+    /* Szám, azonosító, időbélyeg nem ugrál a sorban. */
+    code,
+    kbd,
+    samp,
+    pre {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * Nova ikonográfia: 1.5px vonalvastagság, szögletes végződés, 16-os rács.
+     * A szín mindig currentColor, így az ikon követi a szöveget.
+     */
+    .lucide {
+        stroke-width: 1.5;
+        stroke-linecap: square;
+        stroke-linejoin: miter;
+    }
+
+    /*
+     * Görgetősáv: keskeny, saját felület nélkül. A sáv csak jelzi a pozíciót,
+     * ezért hajszálvonal-erősségű, és nem vág bele a tartalom sávjába.
+     */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-subtle) transparent;
+    }
+
+    *:hover,
+    *:focus-within {
+        scrollbar-color: var(--border-strong) transparent;
+    }
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background-color: var(--border-subtle);
+        background-clip: content-box;
+        border: 3px solid transparent;
+        border-radius: 999px;
+    }
+
+    :hover::-webkit-scrollbar-thumb,
+    :focus-within::-webkit-scrollbar-thumb {
+        background-color: var(--border-strong);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--ink-faint);
+    }
+}
+
+@layer components {
+    /* Nagybetűs mikrofelirat panelek és mezők fölött. */
+    .nova-label {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        line-height: 14px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+    }
+
+    /* Számkijelzés: mindig mono, mindig tabuláris. */
+    .nova-readout {
+        font-family: var(--font-mono);
+        font-size: 28px;
+        line-height: 32px;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+        font-variant-numeric: tabular-nums;
+        color: var(--ink);
+    }
+
+    /* Kód, azonosító, naplósor, időbélyeg. */
+    .nova-code {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        line-height: 20px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .nova-title {
+        font-family: var(--font-display);
+        font-size: 28px;
+        line-height: 32px;
+        font-weight: 600;
+        color: var(--ink);
+    }
+
+    .nova-panel-title {
+        font-family: var(--font-display);
+        font-size: 17px;
+        line-height: 22px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: var(--ink);
+    }
+
+    /* Dekoratív műszerfal-rács. Információt soha nem hordoz. */
+    .nova-grid {
+        background-image: linear-gradient(
+            var(--grid-line) 1px,
+            transparent 1px
+        );
+        background-size: 100% 32px;
+    }
+
+    /* A tartalomoszlop legnagyobb szélessége. */
+    .nova-page {
+        width: 100%;
+        max-width: var(--container-nova);
+        margin-inline: auto;
+    }
+}
+
+/* Rövid és egyirányú mozgás; a beállítást tiszteletben tartjuk. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }

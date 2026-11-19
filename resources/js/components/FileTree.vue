@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { RefreshCw } from "@lucide/vue";
-import { onMounted, ref, watch } from "vue";
-import { Button } from "@/components/ui/button";
-import FileTreeNode from "@/components/FileTreeNode.vue";
-import { tree } from "@/routes/admin/workspaces";
+import { RefreshCw } from '@lucide/vue';
+import { onMounted, ref, watch } from 'vue';
+import { Button } from '@/components/ui/button';
+import FileTreeNode from '@/components/FileTreeNode.vue';
+import { tree } from '@/routes/admin/workspaces';
 
 type Entry = {
     name: string;
     path: string;
-    type: "directory" | "file";
+    type: 'directory' | 'file';
 };
 
 const props = withDefaults(
@@ -35,13 +35,13 @@ async function reload() {
 
     try {
         const response = await fetch(
-            tree.url(props.workspaceId, { query: { path: "" } }),
+            tree.url(props.workspaceId, { query: { path: '' } }),
             {
                 headers: {
-                    Accept: "application/json",
-                    "X-Requested-With": "XMLHttpRequest",
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
-                credentials: "same-origin",
+                credentials: 'same-origin',
             },
         );
 
@@ -51,7 +51,7 @@ async function reload() {
 
         entries.value = (await response.json()).entries as Entry[];
     } catch {
-        error.value = "Nem sikerült beolvasni a mappát.";
+        error.value = 'Nem sikerült beolvasni a mappát.';
         entries.value = [];
     } finally {
         loading.value = false;
@@ -66,8 +66,10 @@ defineExpose({ reload });
 
 <template>
     <div class="flex h-full flex-col">
-        <div class="flex items-center justify-between gap-2 border-b px-2 py-1.5">
-            <span class="text-xs font-medium text-muted-foreground">Fileok</span>
+        <div
+            class="flex items-center justify-between gap-2 border-b border-border bg-surface-200 px-3 py-2"
+        >
+            <span class="nova-label">Fileok</span>
             <Button
                 variant="ghost"
                 size="icon"
@@ -77,20 +79,26 @@ defineExpose({ reload });
                 :disabled="loading"
                 @click="reload"
             >
-                <RefreshCw class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+                <RefreshCw
+                    class="h-3.5 w-3.5"
+                    :class="{ 'animate-spin': loading }"
+                />
             </Button>
         </div>
 
         <div class="min-h-0 flex-1 overflow-auto p-1">
-            <p v-if="loading && entries.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
+            <p
+                v-if="loading && entries.length === 0"
+                class="nova-code px-2 py-2 text-ink-faint"
+            >
                 Betöltés…
             </p>
-            <p v-else-if="error" class="px-2 py-2 text-xs text-destructive">
+            <p v-else-if="error" class="nova-code px-2 py-2 text-signal-alert">
                 {{ error }}
             </p>
             <p
                 v-else-if="entries.length === 0"
-                class="px-2 py-2 text-xs text-muted-foreground"
+                class="nova-code px-2 py-2 text-ink-faint"
             >
                 A mappa üres.
             </p>

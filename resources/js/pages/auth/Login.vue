@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { LogIn } from '@lucide/vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -14,7 +15,8 @@ import { request } from '@/routes/password';
 defineOptions({
     layout: {
         title: 'Jelentkezz be a fiókodba',
-        description: 'Add meg az email címedet és jelszavadat a bejelentkezéshez',
+        description:
+            'Add meg az email címedet és jelszavadat a bejelentkezéshez',
     },
 });
 
@@ -94,6 +96,7 @@ defineProps<{
                 data-test="login-button"
             >
                 <Spinner v-if="processing" />
+                <LogIn v-else />
                 Bejelentkezés
             </Button>
         </div>

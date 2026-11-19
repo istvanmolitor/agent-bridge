@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { Check } from '@lucide/vue';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -79,9 +80,7 @@ defineOptions({
             </div>
 
             <div class="grid gap-2">
-                <Label for="password_confirmation"
-                    >Jelszó megerősítése</Label
-                >
+                <Label for="password_confirmation">Jelszó megerősítése</Label>
                 <PasswordInput
                     id="password_confirmation"
                     name="password_confirmation"
@@ -98,6 +97,7 @@ defineOptions({
                     :disabled="processing"
                     data-test="update-password-button"
                 >
+                    <Check />
                     Mentés
                 </Button>
             </div>

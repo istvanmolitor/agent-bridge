@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agent;
+use App\Models\ApiKey;
 use App\Models\PromptLog;
+use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -11,30 +15,39 @@ use Inertia\Response;
 class PromptLogController extends Controller
 {
     /**
-     * Show a searchable, paginated list of the user's prompt logs.
+     * Show a searchable, paginated list of prompt logs across all users.
      */
     public function index(Request $request): Response
     {
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
+            'user_id' => ['nullable', 'integer'],
             'api_key_id' => ['nullable', 'integer'],
             'agent_id' => ['nullable', 'integer'],
             'workspace_id' => ['nullable', 'integer'],
         ]);
 
         $search = $validated['search'] ?? null;
+        $userId = $validated['user_id'] ?? null;
         $apiKeyId = $validated['api_key_id'] ?? null;
         $agentId = $validated['agent_id'] ?? null;
         $workspaceId = $validated['workspace_id'] ?? null;
 
-        $logs = PromptLog::forUser($request->user()->id)
-            ->with('agentSession.apiKey:id,agent_session_id,name')
+        $logs = PromptLog::query()
+            ->with([
+                'agentSession.user:id,name',
+                'agentSession.apiKey:id,agent_session_id,name',
+            ])
             ->when($search, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('prompt', 'like', "%{$search}%")
                         ->orWhere('response', 'like', "%{$search}%");
                 });
             })
+            ->when($userId, fn ($query) => $query->whereHas(
+                'agentSession',
+                fn ($q) => $q->where('user_id', $userId),
+            ))
             ->when($apiKeyId, fn ($query) => $query->whereHas(
                 'agentSession.apiKey',
                 fn ($q) => $q->where('id', $apiKeyId),
@@ -58,6 +71,9 @@ class PromptLogController extends Controller
                 'error' => $log->error,
                 'session_id' => $log->agentSession?->session_id,
                 'created_at' => $log->created_at,
+                'user' => $log->agentSession?->user
+                    ? ['id' => $log->agentSession->user->id, 'name' => $log->agentSession->user->name]
+                    : null,
                 'api_key' => $log->agentSession?->apiKey
                     ? ['id' => $log->agentSession->apiKey->id, 'name' => $log->agentSession->apiKey->name]
                     : null,
@@ -65,17 +81,21 @@ class PromptLogController extends Controller
 
         return Inertia::render('admin/Logs', [
             'logs' => $logs,
-            'apiKeys' => $request->user()->apiKeys()
+            'users' => User::query()
                 ->orderBy('name')
                 ->get(['id', 'name']),
-            'agents' => $request->user()->agents()
+            'apiKeys' => ApiKey::query()
                 ->orderBy('name')
                 ->get(['id', 'name']),
-            'workspaces' => $request->user()->workspaces()
+            'agents' => Agent::query()
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'workspaces' => Workspace::query()
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'filters' => [
                 'search' => $search,
+                'user_id' => $userId !== null ? (string) $userId : null,
                 'api_key_id' => $apiKeyId !== null ? (string) $apiKeyId : null,
                 'agent_id' => $agentId !== null ? (string) $agentId : null,
                 'workspace_id' => $workspaceId !== null ? (string) $workspaceId : null,

@@ -6,7 +6,7 @@ use App\Models\PromptLog;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('logs page lists only the current user\'s logs', function () {
+test('logs page lists logs from all users', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $ownSession = AgentSession::factory()->for($admin)->create();
     PromptLog::factory()->for($ownSession, 'agentSession')->create(['prompt' => 'mine']);
@@ -16,8 +16,24 @@ test('logs page lists only the current user\'s logs', function () {
         ->get(route('admin.logs.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('admin/Logs')
+            ->has('logs.data', 2),
+        );
+});
+
+test('logs can be filtered by user', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $other = User::factory()->create();
+    $ownSession = AgentSession::factory()->for($admin)->create();
+    $otherSession = AgentSession::factory()->for($other)->create();
+    PromptLog::factory()->for($ownSession, 'agentSession')->create(['prompt' => 'from admin']);
+    PromptLog::factory()->for($otherSession, 'agentSession')->create(['prompt' => 'from other']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.logs.index', ['user_id' => $other->id]))
+        ->assertInertia(fn (Assert $page) => $page
             ->has('logs.data', 1)
-            ->where('logs.data.0.prompt', 'mine'),
+            ->where('logs.data.0.prompt', 'from other')
+            ->where('logs.data.0.user.id', $other->id),
         );
 });
 

@@ -27,6 +27,7 @@ type PromptLog = {
     error: string | null;
     session_id: string | null;
     created_at: string | null;
+    user: { id: number; name: string } | null;
     api_key: { id: number; name: string } | null;
 };
 
@@ -43,11 +44,13 @@ type Paginator<T> = {
 
 const props = defineProps<{
     logs: Paginator<PromptLog>;
+    users: Option[];
     apiKeys: Option[];
     agents: Option[];
     workspaces: Option[];
     filters: {
         search: string | null;
+        user_id: string | null;
         api_key_id: string | null;
         agent_id: string | null;
         workspace_id: string | null;
@@ -68,6 +71,7 @@ defineOptions({
 const ALL = 'all';
 
 const search = ref(props.filters.search ?? '');
+const userId = ref(props.filters.user_id ?? ALL);
 const apiKeyId = ref(props.filters.api_key_id ?? ALL);
 const agentId = ref(props.filters.agent_id ?? ALL);
 const workspaceId = ref(props.filters.workspace_id ?? ALL);
@@ -78,6 +82,7 @@ function applyFilters() {
         index().url,
         {
             search: search.value || undefined,
+            user_id: userId.value === ALL ? undefined : userId.value,
             api_key_id: apiKeyId.value === ALL ? undefined : apiKeyId.value,
             agent_id: agentId.value === ALL ? undefined : agentId.value,
             workspace_id:
@@ -98,7 +103,7 @@ watch(search, () => {
     searchTimeout = window.setTimeout(applyFilters, 350);
 });
 
-watch([apiKeyId, agentId, workspaceId], () => {
+watch([userId, apiKeyId, agentId, workspaceId], () => {
     window.clearTimeout(searchTimeout);
     applyFilters();
 });
@@ -121,7 +126,7 @@ function formatDate(value: string | null): string {
         <Heading
             variant="small"
             title="Logok"
-            description="A beküldött promptok és a hozzájuk tartozó válaszok, API kulcsonként"
+            description="Minden felhasználó beküldött promptjai és a hozzájuk tartozó válaszok"
         />
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -131,6 +136,22 @@ function formatDate(value: string | null): string {
                 placeholder="Keresés a promptokban és válaszokban…"
                 class="sm:max-w-sm"
             />
+
+            <Select v-model="userId">
+                <SelectTrigger class="sm:w-48">
+                    <SelectValue placeholder="Összes felhasználó" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem :value="ALL">Összes felhasználó</SelectItem>
+                    <SelectItem
+                        v-for="user in users"
+                        :key="user.id"
+                        :value="String(user.id)"
+                    >
+                        {{ user.name }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
 
             <Select v-model="workspaceId">
                 <SelectTrigger class="sm:w-48">
@@ -200,6 +221,11 @@ function formatDate(value: string | null): string {
                         {{ log.success ? 'Siker' : 'Hiba' }}
                     </Badge>
                     <span
+                        v-if="log.user"
+                        class="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                        >{{ log.user.name }}</span
+                    >
+                    <span
                         v-if="log.api_key"
                         class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                         >{{ log.api_key.name }}</span
@@ -220,7 +246,7 @@ function formatDate(value: string | null): string {
                 </p>
 
                 <p
-                    class="whitespace-pre-wrap text-sm text-muted-foreground"
+                    class="text-sm whitespace-pre-wrap text-muted-foreground"
                     :class="{ 'line-clamp-3': expanded !== log.id }"
                 >
                     {{ log.error ?? log.response ?? '—' }}

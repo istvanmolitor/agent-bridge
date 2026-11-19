@@ -2,6 +2,7 @@
 
 use App\Models\Agent;
 use App\Models\ApiKey;
+use App\Models\PromptLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Process;
 
@@ -26,6 +27,58 @@ test('a valid api key can submit a prompt and receive the cli result', function 
         'success' => true,
         'result' => 'pong',
     ]);
+});
+
+test('a successful prompt is logged against the api key', function () {
+    Process::fake([
+        '*' => Process::result(output: json_encode([
+            'type' => 'result',
+            'is_error' => false,
+            'result' => 'pong',
+            'session_id' => 'sess-log',
+        ])),
+    ]);
+
+    $user = User::factory()->create();
+    $plainTextToken = ApiKey::generatePlainTextToken();
+    $apiKey = ApiKey::factory()->for($user)->create(['token' => ApiKey::hashToken($plainTextToken)]);
+
+    $this->postJson('/api/prompt', ['prompt' => 'ping'], [
+        'Authorization' => "Bearer {$plainTextToken}",
+    ])->assertOk();
+
+    $log = PromptLog::query()->sole();
+
+    expect($log->api_key_id)->toBe($apiKey->id)
+        ->and($log->user_id)->toBe($user->id)
+        ->and($log->prompt)->toBe('ping')
+        ->and($log->response)->toBe('pong')
+        ->and($log->success)->toBeTrue()
+        ->and($log->error)->toBeNull()
+        ->and($log->session_id)->toBe('sess-log');
+});
+
+test('a failed prompt is logged with its error', function () {
+    Process::fake([
+        '*' => Process::result(output: json_encode([
+            'type' => 'result',
+            'is_error' => true,
+            'result' => 'something went wrong',
+        ])),
+    ]);
+
+    $user = User::factory()->create();
+    $plainTextToken = ApiKey::generatePlainTextToken();
+    ApiKey::factory()->for($user)->create(['token' => ApiKey::hashToken($plainTextToken)]);
+
+    $this->postJson('/api/prompt', ['prompt' => 'ping'], [
+        'Authorization' => "Bearer {$plainTextToken}",
+    ])->assertStatus(502);
+
+    $log = PromptLog::query()->sole();
+
+    expect($log->success)->toBeFalse()
+        ->and($log->error)->toBe('something went wrong');
 });
 
 test('a missing api key is rejected', function () {

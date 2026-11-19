@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Bot, KeyRound, LayoutGrid, TerminalSquare } from '@lucide/vue';
+import {
+    Bot,
+    KeyRound,
+    LayoutGrid,
+    ScrollText,
+    TerminalSquare,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,6 +23,7 @@ import {
 import { dashboard } from '@/routes';
 import { index as indexAdminAgents } from '@/routes/admin/agents';
 import { index as indexAdminApiKeys } from '@/routes/admin/api-keys';
+import { index as indexAdminLogs } from '@/routes/admin/logs';
 import { edit as editAdminPlayground } from '@/routes/admin/playground';
 import type { NavItem } from '@/types';
 
@@ -42,6 +49,11 @@ const mainNavItems = computed<NavItem[]>(() => {
                 title: 'API kulcsok',
                 href: indexAdminApiKeys(),
                 icon: KeyRound,
+            },
+            {
+                title: 'Logok',
+                href: indexAdminLogs(),
+                icon: ScrollText,
             },
             {
                 title: 'Playground',

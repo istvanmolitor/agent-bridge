@@ -61,4 +61,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Agent::class);
     }
+
+    /**
+     * @return HasMany<PromptLog, $this>
+     */
+    public function promptLogs(): HasMany
+    {
+        return $this->hasMany(PromptLog::class);
+    }
 }

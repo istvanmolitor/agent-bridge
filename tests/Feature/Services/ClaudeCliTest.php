@@ -19,6 +19,7 @@ test('a successful cli response is parsed into a result', function () {
         'success' => true,
         'result' => 'pong',
         'error' => null,
+        'session_id' => 'abc123',
         'raw' => [
             'type' => 'result',
             'is_error' => false,

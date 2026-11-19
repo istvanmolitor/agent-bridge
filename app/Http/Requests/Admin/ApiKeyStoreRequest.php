@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Agent;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ApiKeyStoreRequest extends FormRequest
 {
@@ -16,6 +18,10 @@ class ApiKeyStoreRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'agent_id' => [
+                'required',
+                Rule::exists(Agent::class, 'id')->where('user_id', $this->user()->id),
+            ],
         ];
     }
 }

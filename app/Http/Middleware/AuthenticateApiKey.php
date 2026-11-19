@@ -29,6 +29,7 @@ class AuthenticateApiKey
         $apiKey->forceFill(['last_used_at' => now()])->saveQuietly();
 
         $request->setUserResolver(fn () => $apiKey->user);
+        $request->attributes->set('apiKey', $apiKey);
 
         return $next($request);
     }

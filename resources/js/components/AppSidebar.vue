@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { KeyRound, LayoutGrid, TerminalSquare } from '@lucide/vue';
+import { Bot, KeyRound, LayoutGrid, TerminalSquare } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -15,6 +15,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as indexAdminAgents } from '@/routes/admin/agents';
 import { index as indexAdminApiKeys } from '@/routes/admin/api-keys';
 import { edit as editAdminPlayground } from '@/routes/admin/playground';
 import type { NavItem } from '@/types';
@@ -32,6 +33,11 @@ const mainNavItems = computed<NavItem[]>(() => {
 
     if (page.props.auth.user.is_admin) {
         items.push(
+            {
+                title: 'Ügynökök',
+                href: indexAdminAgents(),
+                icon: Bot,
+            },
             {
                 title: 'API kulcsok',
                 href: indexAdminApiKeys(),

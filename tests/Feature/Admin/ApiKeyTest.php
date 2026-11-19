@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Agent;
 use App\Models\ApiKey;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -22,15 +23,17 @@ test('api keys page lists only the current user\'s keys', function () {
 
 test('a new api key can be created and its plaintext token is flashed once', function () {
     $admin = User::factory()->create(['is_admin' => true]);
+    $agent = Agent::factory()->for($admin)->create();
 
     $response = $this->actingAs($admin)
         ->from(route('admin.api-keys.index'))
-        ->post(route('admin.api-keys.store'), ['name' => 'CI server']);
+        ->post(route('admin.api-keys.store'), ['name' => 'CI server', 'agent_id' => $agent->id]);
 
     $response->assertRedirect(route('admin.api-keys.index'));
 
     $apiKey = $admin->apiKeys()->sole();
-    expect($apiKey->name)->toBe('CI server');
+    expect($apiKey->name)->toBe('CI server')
+        ->and($apiKey->agent_id)->toBe($agent->id);
 
     $page = $this->get(route('admin.api-keys.index'))->viewData('page');
 
@@ -39,11 +42,31 @@ test('a new api key can be created and its plaintext token is flashed once', fun
 
 test('creating an api key requires a name', function () {
     $admin = User::factory()->create(['is_admin' => true]);
+    $agent = Agent::factory()->for($admin)->create();
 
     $this->actingAs($admin)
         ->from(route('admin.api-keys.index'))
-        ->post(route('admin.api-keys.store'), ['name' => ''])
+        ->post(route('admin.api-keys.store'), ['name' => '', 'agent_id' => $agent->id])
         ->assertSessionHasErrors('name');
+});
+
+test('creating an api key requires an agent', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)
+        ->from(route('admin.api-keys.index'))
+        ->post(route('admin.api-keys.store'), ['name' => 'CI server'])
+        ->assertSessionHasErrors('agent_id');
+});
+
+test('an api key cannot be bound to another user\'s agent', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $othersAgent = Agent::factory()->create();
+
+    $this->actingAs($admin)
+        ->from(route('admin.api-keys.index'))
+        ->post(route('admin.api-keys.store'), ['name' => 'CI server', 'agent_id' => $othersAgent->id])
+        ->assertSessionHasErrors('agent_id');
 });
 
 test('an admin can delete their own api key', function () {

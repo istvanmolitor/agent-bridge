@@ -14,13 +14,16 @@ use Illuminate\Support\Str;
 /**
  * @property int $id
  * @property int $user_id
+ * @property int $agent_id
  * @property string $name
  * @property string $token
+ * @property string|null $plain_token
+ * @property string|null $claude_session_id
  * @property Carbon|null $last_used_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'token'])]
+#[Fillable(['agent_id', 'name', 'token', 'plain_token', 'claude_session_id'])]
 #[Hidden(['token'])]
 class ApiKey extends Model
 {
@@ -39,9 +42,20 @@ class ApiKey extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<Agent, $this>
+     */
+    public function agent(): BelongsTo
+    {
+        return $this->belongsTo(Agent::class);
     }
 
     public static function generatePlainTextToken(): string

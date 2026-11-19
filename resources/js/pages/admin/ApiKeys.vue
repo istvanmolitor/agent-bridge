@@ -17,17 +17,32 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { index } from '@/routes/admin/api-keys';
 
 type ApiKey = {
     id: number;
     name: string;
+    plain_token: string | null;
     created_at: string | null;
     last_used_at: string | null;
+    agent: { id: number; name: string } | null;
+};
+
+type Agent = {
+    id: number;
+    name: string;
 };
 
 defineProps<{
     apiKeys: ApiKey[];
+    agents: Agent[];
 }>();
 
 defineOptions({
@@ -47,6 +62,21 @@ function formatDate(value: string | null): string {
 
 const generatedApiKey = ref<string | null>(null);
 const copied = ref(false);
+const copiedRowId = ref<number | null>(null);
+
+async function copyRowToken(apiKey: ApiKey) {
+    if (!apiKey.plain_token) {
+        return;
+    }
+
+    await navigator.clipboard.writeText(apiKey.plain_token);
+    copiedRowId.value = apiKey.id;
+    window.setTimeout(() => {
+        if (copiedRowId.value === apiKey.id) {
+            copiedRowId.value = null;
+        }
+    }, 2000);
+}
 
 function handleFlash(event: Event) {
     const flash = (event as CustomEvent).detail?.flash;
@@ -90,7 +120,14 @@ async function copyToken() {
 
             <Dialog>
                 <DialogTrigger as-child>
-                    <Button data-test="create-api-key-button"
+                    <Button
+                        data-test="create-api-key-button"
+                        :disabled="agents.length === 0"
+                        :title="
+                            agents.length === 0
+                                ? 'Előbb hozz létre egy ügynököt'
+                                : undefined
+                        "
                         >Új kulcs</Button
                     >
                 </DialogTrigger>
@@ -105,13 +142,38 @@ async function copyToken() {
                         <DialogHeader class="space-y-3">
                             <DialogTitle>Új API kulcs létrehozása</DialogTitle>
                             <DialogDescription>
-                                Adj nevet a kulcsnak, hogy később
-                                felismerhesd.
+                                Adj nevet a kulcsnak, hogy később felismerhesd.
                             </DialogDescription>
                         </DialogHeader>
 
                         <div class="grid gap-2">
-                            <Label for="name" class="sr-only">Név</Label>
+                            <Label for="agent_id">Ügynök</Label>
+                            <Select
+                                name="agent_id"
+                                :default-value="
+                                    agents[0] ? String(agents[0].id) : undefined
+                                "
+                            >
+                                <SelectTrigger id="agent_id">
+                                    <SelectValue
+                                        placeholder="Válassz ügynököt…"
+                                    />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem
+                                        v-for="agent in agents"
+                                        :key="agent.id"
+                                        :value="String(agent.id)"
+                                    >
+                                        {{ agent.name }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <InputError :message="errors.agent_id" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="name">Név</Label>
                             <Input
                                 id="name"
                                 name="name"
@@ -159,21 +221,48 @@ async function copyToken() {
                 :key="apiKey.id"
                 class="flex items-center justify-between gap-4 p-4"
             >
-                <div class="space-y-1">
-                    <p class="font-medium">{{ apiKey.name }}</p>
+                <div class="min-w-0 flex-1 space-y-2">
+                    <p class="font-medium">
+                        {{ apiKey.name }}
+                        <span
+                            v-if="apiKey.agent"
+                            class="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground"
+                            >{{ apiKey.agent.name }}</span
+                        >
+                    </p>
+
+                    <div
+                        v-if="apiKey.plain_token"
+                        class="flex max-w-md items-center gap-2"
+                    >
+                        <Input
+                            :model-value="apiKey.plain_token"
+                            readonly
+                            class="font-mono text-xs"
+                        />
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            @click="copyRowToken(apiKey)"
+                        >
+                            {{
+                                copiedRowId === apiKey.id
+                                    ? 'Kimásolva'
+                                    : 'Másolás'
+                            }}
+                        </Button>
+                    </div>
+
                     <p class="text-sm text-muted-foreground">
                         Létrehozva: {{ formatDate(apiKey.created_at) }} ·
-                        Utoljára használva: {{
-                            formatDate(apiKey.last_used_at)
-                        }}
+                        Utoljára használva:
+                        {{ formatDate(apiKey.last_used_at) }}
                     </p>
                 </div>
 
                 <Dialog>
                     <DialogTrigger as-child>
-                        <Button variant="destructive" size="sm"
-                            >Törlés</Button
-                        >
+                        <Button variant="destructive" size="sm">Törlés</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <Form
@@ -184,9 +273,8 @@ async function copyToken() {
                         >
                             <DialogHeader class="space-y-3">
                                 <DialogTitle
-                                    >Törlöd a(z) "{{
-                                        apiKey.name
-                                    }}" kulcsot?</DialogTitle
+                                    >Törlöd a(z) "{{ apiKey.name }}"
+                                    kulcsot?</DialogTitle
                                 >
                                 <DialogDescription>
                                     Az ezt a kulcsot használó alkalmazások
@@ -197,9 +285,7 @@ async function copyToken() {
 
                             <DialogFooter class="gap-2">
                                 <DialogClose as-child>
-                                    <Button variant="secondary"
-                                        >Mégse</Button
-                                    >
+                                    <Button variant="secondary">Mégse</Button>
                                 </DialogClose>
 
                                 <Button

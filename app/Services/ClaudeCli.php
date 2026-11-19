@@ -10,9 +10,16 @@ class ClaudeCli
     /**
      * Run a prompt through the locally installed `claude` CLI and return its parsed response.
      *
-     * @return array{success: bool, result: ?string, error: ?string, raw: mixed}
+     * Supported options:
+     *  - systemPrompt (?string): the agent persona to apply when starting a new session.
+     *  - promptMode (string): 'append' (default) or 'override' — how the persona is applied.
+     *  - model (?string): model alias/name to use when starting a new session.
+     *  - sessionId (?string): resume an existing conversation instead of starting a new one.
+     *
+     * @param  array{systemPrompt?: ?string, promptMode?: string, model?: ?string, sessionId?: ?string}  $options
+     * @return array{success: bool, result: ?string, error: ?string, session_id: ?string, raw: mixed}
      */
-    public function run(string $prompt): array
+    public function run(string $prompt, array $options = []): array
     {
         $workdir = config('services.claude_cli.workdir');
 
@@ -20,11 +27,7 @@ class ClaudeCli
 
         $process = Process::path($workdir)
             ->timeout((int) config('services.claude_cli.timeout'))
-            ->run([
-                config('services.claude_cli.binary'),
-                '-p', $prompt,
-                '--output-format', 'json',
-            ]);
+            ->run($this->buildCommand($prompt, $options));
 
         if (! $process->successful()) {
             $errorOutput = trim($process->errorOutput());
@@ -33,6 +36,7 @@ class ClaudeCli
                 'success' => false,
                 'result' => null,
                 'error' => $errorOutput !== '' ? $errorOutput : 'The claude command exited with an error.',
+                'session_id' => null,
                 'raw' => null,
             ];
         }
@@ -45,6 +49,7 @@ class ClaudeCli
                 'success' => false,
                 'result' => null,
                 'error' => 'Unable to parse the claude command output.',
+                'session_id' => null,
                 'raw' => $output,
             ];
         }
@@ -55,7 +60,55 @@ class ClaudeCli
             'success' => ! $isError,
             'result' => $decoded['result'] ?? null,
             'error' => $isError ? ($decoded['result'] ?? 'The claude command reported an error.') : null,
+            'session_id' => $decoded['session_id'] ?? null,
             'raw' => $decoded,
         ];
+    }
+
+    /**
+     * Build the argument list for the claude CLI invocation.
+     *
+     * When resuming a session the persona and model already live in the
+     * conversation, so they are only applied when starting a fresh session.
+     *
+     * @param  array{systemPrompt?: ?string, promptMode?: string, model?: ?string, sessionId?: ?string}  $options
+     * @return list<string>
+     */
+    protected function buildCommand(string $prompt, array $options): array
+    {
+        $command = [
+            config('services.claude_cli.binary'),
+            '-p', $prompt,
+            '--output-format', 'json',
+        ];
+
+        $sessionId = $options['sessionId'] ?? null;
+
+        if ($sessionId !== null && $sessionId !== '') {
+            $command[] = '--resume';
+            $command[] = $sessionId;
+
+            return $command;
+        }
+
+        $systemPrompt = $options['systemPrompt'] ?? null;
+
+        if ($systemPrompt !== null && $systemPrompt !== '') {
+            $flag = ($options['promptMode'] ?? 'append') === 'override'
+                ? '--system-prompt'
+                : '--append-system-prompt';
+
+            $command[] = $flag;
+            $command[] = $systemPrompt;
+        }
+
+        $model = $options['model'] ?? null;
+
+        if ($model !== null && $model !== '') {
+            $command[] = '--model';
+            $command[] = $model;
+        }
+
+        return $command;
     }
 }

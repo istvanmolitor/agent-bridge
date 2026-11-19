@@ -20,8 +20,12 @@ class ApiKeyController extends Controller
     {
         return Inertia::render('admin/ApiKeys', [
             'apiKeys' => $request->user()->apiKeys()
+                ->with('agent:id,name')
                 ->latest()
-                ->get(['id', 'name', 'last_used_at', 'created_at']),
+                ->get(['id', 'agent_id', 'name', 'plain_token', 'last_used_at', 'created_at']),
+            'agents' => $request->user()->agents()
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -33,8 +37,10 @@ class ApiKeyController extends Controller
         $plainTextToken = ApiKey::generatePlainTextToken();
 
         $request->user()->apiKeys()->create([
+            'agent_id' => $request->validated('agent_id'),
             'name' => $request->validated('name'),
             'token' => ApiKey::hashToken($plainTextToken),
+            'plain_token' => $plainTextToken,
         ]);
 
         Inertia::flash('generatedApiKey', $plainTextToken);

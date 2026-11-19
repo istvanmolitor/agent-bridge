@@ -53,4 +53,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(ApiKey::class);
     }
+
+    /**
+     * @return HasMany<Agent, $this>
+     */
+    public function agents(): HasMany
+    {
+        return $this->hasMany(Agent::class);
+    }
 }

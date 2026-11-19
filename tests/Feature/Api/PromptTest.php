@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Agent;
+use App\Models\AgentSession;
 use App\Models\ApiKey;
 use App\Models\PromptLog;
 use App\Models\User;
@@ -16,8 +17,8 @@ test('a valid api key can submit a prompt and receive the cli result', function 
     ]);
 
     $user = User::factory()->create();
-    $plainTextToken = ApiKey::generatePlainTextToken();
-    ApiKey::factory()->for($user)->create(['token' => ApiKey::hashToken($plainTextToken)]);
+    $plainTextToken = ApiKey::generateToken();
+    ApiKey::factory()->for($user)->create(['token' => $plainTextToken]);
 
     $response = $this->postJson('/api/prompt', ['prompt' => 'ping'], [
         'Authorization' => "Bearer {$plainTextToken}",
@@ -40,8 +41,8 @@ test('a successful prompt is logged against the api key', function () {
     ]);
 
     $user = User::factory()->create();
-    $plainTextToken = ApiKey::generatePlainTextToken();
-    $apiKey = ApiKey::factory()->for($user)->create(['token' => ApiKey::hashToken($plainTextToken)]);
+    $plainTextToken = ApiKey::generateToken();
+    $apiKey = ApiKey::factory()->for($user)->create(['token' => $plainTextToken]);
 
     $this->postJson('/api/prompt', ['prompt' => 'ping'], [
         'Authorization' => "Bearer {$plainTextToken}",
@@ -49,13 +50,12 @@ test('a successful prompt is logged against the api key', function () {
 
     $log = PromptLog::query()->sole();
 
-    expect($log->api_key_id)->toBe($apiKey->id)
-        ->and($log->user_id)->toBe($user->id)
+    expect($log->agent_session_id)->toBe($apiKey->agent_session_id)
+        ->and($apiKey->agentSession->refresh()->session_id)->toBe('sess-log')
         ->and($log->prompt)->toBe('ping')
         ->and($log->response)->toBe('pong')
         ->and($log->success)->toBeTrue()
-        ->and($log->error)->toBeNull()
-        ->and($log->session_id)->toBe('sess-log');
+        ->and($log->error)->toBeNull();
 });
 
 test('a failed prompt is logged with its error', function () {
@@ -68,8 +68,8 @@ test('a failed prompt is logged with its error', function () {
     ]);
 
     $user = User::factory()->create();
-    $plainTextToken = ApiKey::generatePlainTextToken();
-    ApiKey::factory()->for($user)->create(['token' => ApiKey::hashToken($plainTextToken)]);
+    $plainTextToken = ApiKey::generateToken();
+    ApiKey::factory()->for($user)->create(['token' => $plainTextToken]);
 
     $this->postJson('/api/prompt', ['prompt' => 'ping'], [
         'Authorization' => "Bearer {$plainTextToken}",
@@ -111,10 +111,10 @@ test('the first prompt applies the agent persona and stores the returned session
         'prompt_mode' => 'override',
         'model' => 'claude-sonnet-5',
     ]);
-    $plainTextToken = ApiKey::generatePlainTextToken();
-    $apiKey = ApiKey::factory()->for($user)->for($agent)->create([
-        'token' => ApiKey::hashToken($plainTextToken),
-        'claude_session_id' => null,
+    $plainTextToken = ApiKey::generateToken();
+    $session = AgentSession::factory()->fresh()->for($user)->for($agent)->create();
+    ApiKey::factory()->for($user)->for($session, 'agentSession')->create([
+        'token' => $plainTextToken,
     ]);
 
     $this->postJson('/api/prompt', ['prompt' => 'ping'], [
@@ -127,7 +127,7 @@ test('the first prompt applies the agent persona and stores the returned session
         && in_array('claude-sonnet-5', $process->command, true)
         && ! in_array('--resume', $process->command, true));
 
-    expect($apiKey->refresh()->claude_session_id)->toBe('sess-new');
+    expect($session->refresh()->session_id)->toBe('sess-new');
 });
 
 test('a subsequent prompt resumes the stored session instead of re-applying the persona', function () {
@@ -142,10 +142,10 @@ test('a subsequent prompt resumes the stored session instead of re-applying the 
 
     $user = User::factory()->create();
     $agent = Agent::factory()->for($user)->create(['system_prompt' => 'You are a poet.']);
-    $plainTextToken = ApiKey::generatePlainTextToken();
-    ApiKey::factory()->for($user)->for($agent)->create([
-        'token' => ApiKey::hashToken($plainTextToken),
-        'claude_session_id' => 'sess-1',
+    $plainTextToken = ApiKey::generateToken();
+    $session = AgentSession::factory()->for($user)->for($agent)->create(['session_id' => 'sess-1']);
+    ApiKey::factory()->for($user)->for($session, 'agentSession')->create([
+        'token' => $plainTextToken,
     ]);
 
     $this->postJson('/api/prompt', ['prompt' => 'ping'], [
@@ -164,9 +164,9 @@ test('using an api key updates its last_used_at timestamp', function () {
     ]);
 
     $user = User::factory()->create();
-    $plainTextToken = ApiKey::generatePlainTextToken();
+    $plainTextToken = ApiKey::generateToken();
     $apiKey = ApiKey::factory()->for($user)->create([
-        'token' => ApiKey::hashToken($plainTextToken),
+        'token' => $plainTextToken,
         'last_used_at' => null,
     ]);
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Agent;
+use App\Models\AgentSession;
 use App\Models\ApiKey;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -83,16 +84,18 @@ test('an admin cannot update another user\'s agent', function () {
         ->assertForbidden();
 });
 
-test('deleting an agent cascades to its api keys', function () {
+test('deleting an agent cascades to its sessions and api keys', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $agent = Agent::factory()->for($admin)->create();
-    $apiKey = ApiKey::factory()->for($admin)->for($agent)->create();
+    $session = AgentSession::factory()->for($admin)->for($agent)->create();
+    $apiKey = ApiKey::factory()->for($admin)->for($session, 'agentSession')->create();
 
     $this->actingAs($admin)
         ->delete(route('admin.agents.destroy', $agent))
         ->assertRedirect(route('admin.agents.index'));
 
     expect(Agent::find($agent->id))->toBeNull()
+        ->and(AgentSession::find($session->id))->toBeNull()
         ->and(ApiKey::find($apiKey->id))->toBeNull();
 });
 

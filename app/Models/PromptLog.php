@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\PromptLogFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,17 +12,15 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $user_id
- * @property int|null $api_key_id
+ * @property int $agent_session_id
  * @property string $prompt
  * @property string|null $response
  * @property bool $success
  * @property string|null $error
- * @property string|null $session_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['user_id', 'api_key_id', 'prompt', 'response', 'success', 'error', 'session_id'])]
+#[Fillable(['agent_session_id', 'prompt', 'response', 'success', 'error'])]
 class PromptLog extends Model
 {
     /** @use HasFactory<PromptLogFactory> */
@@ -40,18 +39,20 @@ class PromptLog extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<AgentSession, $this>
      */
-    public function user(): BelongsTo
+    public function agentSession(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(AgentSession::class);
     }
 
     /**
-     * @return BelongsTo<ApiKey, $this>
+     * Scope the logs to those owned by the given user (through their API keys).
+     *
+     * @param  Builder<PromptLog>  $query
      */
-    public function apiKey(): BelongsTo
+    public function scopeForUser(Builder $query, int $userId): void
     {
-        return $this->belongsTo(ApiKey::class);
+        $query->whereHas('agentSession', fn (Builder $q) => $q->where('user_id', $userId));
     }
 }

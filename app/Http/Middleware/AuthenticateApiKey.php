@@ -16,10 +16,13 @@ class AuthenticateApiKey
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $plainTextToken = $request->bearerToken();
+        $token = $request->bearerToken();
 
-        $apiKey = $plainTextToken !== null
-            ? ApiKey::query()->where('token', ApiKey::hashToken($plainTextToken))->first()
+        $apiKey = $token !== null
+            ? ApiKey::query()
+                ->with(['agentSession.agent', 'agentSession.workspace'])
+                ->where('token', $token)
+                ->first()
             : null;
 
         if (! $apiKey) {

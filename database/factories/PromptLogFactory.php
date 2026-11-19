@@ -2,9 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\ApiKey;
+use App\Models\AgentSession;
 use App\Models\PromptLog;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,13 +19,11 @@ class PromptLogFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => User::factory(),
-            'api_key_id' => ApiKey::factory(),
+            'agent_session_id' => AgentSession::factory(),
             'prompt' => fake()->sentence(),
             'response' => fake()->paragraph(),
             'success' => true,
             'error' => null,
-            'session_id' => fake()->uuid(),
         ];
     }
 }

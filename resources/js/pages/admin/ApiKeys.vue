@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Form, Head, router } from '@inertiajs/vue3';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { Form, Head } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import ApiKeyController from '@/actions/App/Http/Controllers/Admin/ApiKeyController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -29,10 +29,11 @@ import { index } from '@/routes/admin/api-keys';
 type ApiKey = {
     id: number;
     name: string;
-    plain_token: string | null;
+    token: string;
     created_at: string | null;
     last_used_at: string | null;
     agent: { id: number; name: string } | null;
+    workspace: { id: number; name: string } | null;
 };
 
 type Agent = {
@@ -40,9 +41,15 @@ type Agent = {
     name: string;
 };
 
+type Workspace = {
+    id: number;
+    name: string;
+};
+
 defineProps<{
     apiKeys: ApiKey[];
     agents: Agent[];
+    workspaces: Workspace[];
 }>();
 
 defineOptions({
@@ -60,48 +67,16 @@ function formatDate(value: string | null): string {
     return value ? new Date(value).toLocaleString('hu-HU') : 'Soha';
 }
 
-const generatedApiKey = ref<string | null>(null);
-const copied = ref(false);
 const copiedRowId = ref<number | null>(null);
 
 async function copyRowToken(apiKey: ApiKey) {
-    if (!apiKey.plain_token) {
-        return;
-    }
-
-    await navigator.clipboard.writeText(apiKey.plain_token);
+    await navigator.clipboard.writeText(apiKey.token);
     copiedRowId.value = apiKey.id;
     window.setTimeout(() => {
         if (copiedRowId.value === apiKey.id) {
             copiedRowId.value = null;
         }
     }, 2000);
-}
-
-function handleFlash(event: Event) {
-    const flash = (event as CustomEvent).detail?.flash;
-    const token = flash?.generatedApiKey as string | undefined;
-
-    if (token) {
-        generatedApiKey.value = token;
-        copied.value = false;
-    }
-}
-
-let unsubscribeFlash: (() => void) | undefined;
-
-onMounted(() => {
-    unsubscribeFlash = router.on('flash', handleFlash);
-});
-onUnmounted(() => unsubscribeFlash?.());
-
-async function copyToken() {
-    if (!generatedApiKey.value) {
-        return;
-    }
-
-    await navigator.clipboard.writeText(generatedApiKey.value);
-    copied.value = true;
 }
 </script>
 
@@ -122,11 +97,13 @@ async function copyToken() {
                 <DialogTrigger as-child>
                     <Button
                         data-test="create-api-key-button"
-                        :disabled="agents.length === 0"
+                        :disabled="agents.length === 0 || workspaces.length === 0"
                         :title="
                             agents.length === 0
                                 ? 'Előbb hozz létre egy ügynököt'
-                                : undefined
+                                : workspaces.length === 0
+                                  ? 'Előbb hozz létre egy munkaterületet'
+                                  : undefined
                         "
                         >Új kulcs</Button
                     >
@@ -170,6 +147,34 @@ async function copyToken() {
                                 </SelectContent>
                             </Select>
                             <InputError :message="errors.agent_id" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="workspace_id">Munkaterület</Label>
+                            <Select
+                                name="workspace_id"
+                                :default-value="
+                                    workspaces[0]
+                                        ? String(workspaces[0].id)
+                                        : undefined
+                                "
+                            >
+                                <SelectTrigger id="workspace_id">
+                                    <SelectValue
+                                        placeholder="Válassz munkaterületet…"
+                                    />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem
+                                        v-for="workspace in workspaces"
+                                        :key="workspace.id"
+                                        :value="String(workspace.id)"
+                                    >
+                                        {{ workspace.name }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <InputError :message="errors.workspace_id" />
                         </div>
 
                         <div class="grid gap-2">
@@ -229,14 +234,16 @@ async function copyToken() {
                             class="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground"
                             >{{ apiKey.agent.name }}</span
                         >
+                        <span
+                            v-if="apiKey.workspace"
+                            class="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground"
+                            >📁 {{ apiKey.workspace.name }}</span
+                        >
                     </p>
 
-                    <div
-                        v-if="apiKey.plain_token"
-                        class="flex max-w-md items-center gap-2"
-                    >
+                    <div class="flex max-w-md items-center gap-2">
                         <Input
-                            :model-value="apiKey.plain_token"
+                            :model-value="apiKey.token"
                             readonly
                             class="font-mono text-xs"
                         />
@@ -302,31 +309,4 @@ async function copyToken() {
             </div>
         </div>
     </div>
-
-    <Dialog
-        :open="generatedApiKey !== null"
-        @update:open="(open) => !open && (generatedApiKey = null)"
-    >
-        <DialogContent>
-            <DialogHeader class="space-y-3">
-                <DialogTitle>Az új API kulcsod</DialogTitle>
-                <DialogDescription>
-                    Másold ki most a kulcsot — többé nem fog megjelenni.
-                </DialogDescription>
-            </DialogHeader>
-
-            <div class="flex items-center gap-2">
-                <Input :model-value="generatedApiKey ?? ''" readonly />
-                <Button variant="secondary" @click="copyToken">
-                    {{ copied ? 'Kimásolva' : 'Másolás' }}
-                </Button>
-            </div>
-
-            <DialogFooter>
-                <DialogClose as-child>
-                    <Button @click="generatedApiKey = null">Kész</Button>
-                </DialogClose>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
 </template>

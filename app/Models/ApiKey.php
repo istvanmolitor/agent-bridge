@@ -4,28 +4,23 @@ namespace App\Models;
 
 use Database\Factories\ApiKeyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * @property int $id
  * @property int $user_id
- * @property int $agent_id
+ * @property int $agent_session_id
  * @property string $name
  * @property string $token
- * @property string|null $plain_token
- * @property string|null $claude_session_id
  * @property Carbon|null $last_used_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['agent_id', 'name', 'token', 'plain_token', 'claude_session_id'])]
-#[Hidden(['token'])]
+#[Fillable(['agent_session_id', 'name', 'token'])]
 class ApiKey extends Model
 {
     /** @use HasFactory<ApiKeyFactory> */
@@ -52,28 +47,15 @@ class ApiKey extends Model
     }
 
     /**
-     * @return BelongsTo<Agent, $this>
+     * @return BelongsTo<AgentSession, $this>
      */
-    public function agent(): BelongsTo
+    public function agentSession(): BelongsTo
     {
-        return $this->belongsTo(Agent::class);
+        return $this->belongsTo(AgentSession::class);
     }
 
-    /**
-     * @return HasMany<PromptLog, $this>
-     */
-    public function promptLogs(): HasMany
-    {
-        return $this->hasMany(PromptLog::class);
-    }
-
-    public static function generatePlainTextToken(): string
+    public static function generateToken(): string
     {
         return 'cc_'.Str::random(40);
-    }
-
-    public static function hashToken(string $plainTextToken): string
-    {
-        return hash('sha256', $plainTextToken);
     }
 }

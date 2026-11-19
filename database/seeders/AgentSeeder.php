@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Agent;
 use App\Models\ApiKey;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 
 class AgentSeeder extends Seeder
@@ -15,6 +16,10 @@ class AgentSeeder extends Seeder
     public function run(): void
     {
         $user = User::where('email', 'admin@example.com')->firstOrFail();
+
+        $workspace = Workspace::where('user_id', $user->id)
+            ->where('name', 'Alapértelmezett')
+            ->firstOrFail();
 
         $agents = [
             [
@@ -49,20 +54,24 @@ class AgentSeeder extends Seeder
                 $attributes,
             );
 
-            if ($agent->apiKeys()->exists()) {
+            if ($agent->sessions()->whereHas('apiKey')->exists()) {
                 continue;
             }
 
-            $plainTextToken = ApiKey::generatePlainTextToken();
-
-            $agent->apiKeys()->create([
+            $session = $agent->sessions()->create([
                 'user_id' => $user->id,
-                'name' => $attributes['name'].' kulcs',
-                'token' => ApiKey::hashToken($plainTextToken),
-                'plain_token' => $plainTextToken,
+                'workspace_id' => $workspace->id,
             ]);
 
-            $this->command?->info("API kulcs – {$attributes['name']}: {$plainTextToken}");
+            $token = ApiKey::generateToken();
+
+            $user->apiKeys()->create([
+                'agent_session_id' => $session->id,
+                'name' => $attributes['name'].' kulcs',
+                'token' => $token,
+            ]);
+
+            $this->command?->info("API kulcs – {$attributes['name']}: {$token}");
         }
     }
 }

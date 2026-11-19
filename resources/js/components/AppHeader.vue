@@ -35,7 +35,7 @@ import UserMenuContent from "@/components/UserMenuContent.vue";
 import { useCurrentUrl } from "@/composables/useCurrentUrl";
 import { getInitials } from "@/composables/useInitials";
 import { toUrl } from "@/lib/utils";
-import { edit as editAdminPlayground } from "@/routes/admin/playground";
+import { index as indexAdminChat } from "@/routes/admin/chat";
 import type { BreadcrumbItem, NavItem } from "@/types";
 
 type Props = {
@@ -55,8 +55,8 @@ const activeItemStyles =
 
 const mainNavItems: NavItem[] = [
     {
-        title: "Playground",
-        href: editAdminPlayground(),
+        title: "Chat",
+        href: indexAdminChat(),
         icon: TerminalSquare,
     },
 ];
@@ -147,7 +147,7 @@ const rightNavItems: NavItem[] = [
                 </div>
 
                 <Link
-                    :href="editAdminPlayground()"
+                    :href="indexAdminChat()"
                     class="flex items-center gap-x-2"
                 >
                     <AppLogo />

@@ -3,6 +3,7 @@
 use App\Models\Agent;
 use App\Models\ApiKey;
 use App\Models\User;
+use App\Models\Workspace;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('api keys page lists only the current user\'s keys', function () {
@@ -17,27 +18,61 @@ test('api keys page lists only the current user\'s keys', function () {
             ->has('apiKeys', 1)
             ->where('apiKeys.0.id', $ownKey->id)
             ->where('apiKeys.0.name', 'Mine')
-            ->missing('apiKeys.0.token'),
+            ->where('apiKeys.0.token', $ownKey->token),
         );
 });
 
-test('a new api key can be created and its plaintext token is flashed once', function () {
+test('a new api key can be created with a single copyable token', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $agent = Agent::factory()->for($admin)->create();
+    $workspace = Workspace::factory()->for($admin)->create();
 
     $response = $this->actingAs($admin)
         ->from(route('admin.api-keys.index'))
-        ->post(route('admin.api-keys.store'), ['name' => 'CI server', 'agent_id' => $agent->id]);
+        ->post(route('admin.api-keys.store'), [
+            'name' => 'CI server',
+            'agent_id' => $agent->id,
+            'workspace_id' => $workspace->id,
+        ]);
 
     $response->assertRedirect(route('admin.api-keys.index'));
 
     $apiKey = $admin->apiKeys()->sole();
     expect($apiKey->name)->toBe('CI server')
-        ->and($apiKey->agent_id)->toBe($agent->id);
+        ->and($apiKey->token)->toStartWith('cc_')
+        ->and($apiKey->agentSession->user_id)->toBe($admin->id)
+        ->and($apiKey->agentSession->agent_id)->toBe($agent->id)
+        ->and($apiKey->agentSession->workspace_id)->toBe($workspace->id);
 
-    $page = $this->get(route('admin.api-keys.index'))->viewData('page');
+    $this->get(route('admin.api-keys.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('apiKeys.0.token', $apiKey->token),
+        );
+});
 
-    expect(ApiKey::hashToken($page['flash']['generatedApiKey']))->toBe($apiKey->token);
+test('creating an api key requires a workspace', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $agent = Agent::factory()->for($admin)->create();
+
+    $this->actingAs($admin)
+        ->from(route('admin.api-keys.index'))
+        ->post(route('admin.api-keys.store'), ['name' => 'CI server', 'agent_id' => $agent->id])
+        ->assertSessionHasErrors('workspace_id');
+});
+
+test('an api key cannot be bound to another user\'s workspace', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $agent = Agent::factory()->for($admin)->create();
+    $othersWorkspace = Workspace::factory()->create();
+
+    $this->actingAs($admin)
+        ->from(route('admin.api-keys.index'))
+        ->post(route('admin.api-keys.store'), [
+            'name' => 'CI server',
+            'agent_id' => $agent->id,
+            'workspace_id' => $othersWorkspace->id,
+        ])
+        ->assertSessionHasErrors('workspace_id');
 });
 
 test('creating an api key requires a name', function () {

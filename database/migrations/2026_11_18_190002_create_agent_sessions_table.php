@@ -11,19 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('prompt_logs', function (Blueprint $table) {
+        Schema::create('agent_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('api_key_id')->nullable()->constrained()->nullOnDelete();
-            $table->text('prompt');
-            $table->longText('response')->nullable();
-            $table->boolean('success')->default(false);
-            $table->text('error')->nullable();
+            $table->foreignId('agent_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('workspace_id')->nullable()->constrained()->nullOnDelete();
             $table->string('session_id')->nullable();
+            $table->timestamp('last_used_at')->nullable();
             $table->timestamps();
 
             $table->index(['user_id', 'created_at']);
-            $table->index('api_key_id');
         });
     }
 
@@ -32,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('prompt_logs');
+        Schema::dropIfExists('agent_sessions');
     }
 };

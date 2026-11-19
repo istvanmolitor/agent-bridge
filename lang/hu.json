@@ -2,5 +2,11 @@
     "Profile updated.": "A profil frissítve.",
     "Password updated.": "A jelszó frissítve.",
     "API key created.": "Az API kulcs létrehozva.",
-    "API key deleted.": "Az API kulcs törölve."
+    "API key deleted.": "Az API kulcs törölve.",
+    "Workspace created.": "A munkaterület létrehozva.",
+    "Workspace updated.": "A munkaterület frissítve.",
+    "Workspace deleted.": "A munkaterület törölve.",
+    "The folder could not be created or is not writable under :base. Check its name and permissions.": "A mappa nem hozható létre vagy nem írható a(z) :base mappában. Ellenőrizd a nevét és a jogosultságokat.",
+    "The folder may not contain \".\" or \"..\" segments.": "A mappa nem tartalmazhat \".\" vagy \"..\" szakaszokat.",
+    "folder": "mappa"
 }

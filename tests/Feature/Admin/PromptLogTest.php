@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AgentSession;
 use App\Models\ApiKey;
 use App\Models\PromptLog;
 use App\Models\User;
@@ -7,8 +8,8 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 test('logs page lists only the current user\'s logs', function () {
     $admin = User::factory()->create(['is_admin' => true]);
-    $ownKey = ApiKey::factory()->for($admin)->create();
-    PromptLog::factory()->for($admin)->for($ownKey, 'apiKey')->create(['prompt' => 'mine']);
+    $ownSession = AgentSession::factory()->for($admin)->create();
+    PromptLog::factory()->for($ownSession, 'agentSession')->create(['prompt' => 'mine']);
     PromptLog::factory()->create(['prompt' => 'someone else']);
 
     $this->actingAs($admin)
@@ -22,9 +23,9 @@ test('logs page lists only the current user\'s logs', function () {
 
 test('logs can be searched by prompt and response', function () {
     $admin = User::factory()->create(['is_admin' => true]);
-    $key = ApiKey::factory()->for($admin)->create();
-    PromptLog::factory()->for($admin)->for($key, 'apiKey')->create(['prompt' => 'about laravel', 'response' => 'a framework']);
-    PromptLog::factory()->for($admin)->for($key, 'apiKey')->create(['prompt' => 'about php', 'response' => 'a language']);
+    $session = AgentSession::factory()->for($admin)->create();
+    PromptLog::factory()->for($session, 'agentSession')->create(['prompt' => 'about laravel', 'response' => 'a framework']);
+    PromptLog::factory()->for($session, 'agentSession')->create(['prompt' => 'about php', 'response' => 'a language']);
 
     $this->actingAs($admin)
         ->get(route('admin.logs.index', ['search' => 'laravel']))
@@ -43,10 +44,12 @@ test('logs can be searched by prompt and response', function () {
 
 test('logs can be filtered by api key', function () {
     $admin = User::factory()->create(['is_admin' => true]);
-    $keyA = ApiKey::factory()->for($admin)->create();
-    $keyB = ApiKey::factory()->for($admin)->create();
-    PromptLog::factory()->for($admin)->for($keyA, 'apiKey')->create(['prompt' => 'from A']);
-    PromptLog::factory()->for($admin)->for($keyB, 'apiKey')->create(['prompt' => 'from B']);
+    $sessionA = AgentSession::factory()->for($admin)->create();
+    $sessionB = AgentSession::factory()->for($admin)->create();
+    $keyA = ApiKey::factory()->for($admin)->for($sessionA, 'agentSession')->create();
+    ApiKey::factory()->for($admin)->for($sessionB, 'agentSession')->create();
+    PromptLog::factory()->for($sessionA, 'agentSession')->create(['prompt' => 'from A']);
+    PromptLog::factory()->for($sessionB, 'agentSession')->create(['prompt' => 'from B']);
 
     $this->actingAs($admin)
         ->get(route('admin.logs.index', ['api_key_id' => $keyA->id]))
@@ -58,8 +61,8 @@ test('logs can be filtered by api key', function () {
 
 test('logs are paginated', function () {
     $admin = User::factory()->create(['is_admin' => true]);
-    $key = ApiKey::factory()->for($admin)->create();
-    PromptLog::factory()->for($admin)->for($key, 'apiKey')->count(25)->create();
+    $session = AgentSession::factory()->for($admin)->create();
+    PromptLog::factory()->for($session, 'agentSession')->count(25)->create();
 
     $this->actingAs($admin)
         ->get(route('admin.logs.index'))

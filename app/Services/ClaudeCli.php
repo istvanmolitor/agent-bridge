@@ -15,13 +15,14 @@ class ClaudeCli
      *  - promptMode (string): 'append' (default) or 'override' — how the persona is applied.
      *  - model (?string): model alias/name to use when starting a new session.
      *  - sessionId (?string): resume an existing conversation instead of starting a new one.
+     *  - workdir (?string): directory the CLI runs in; falls back to the configured default.
      *
-     * @param  array{systemPrompt?: ?string, promptMode?: string, model?: ?string, sessionId?: ?string}  $options
+     * @param  array{systemPrompt?: ?string, promptMode?: string, model?: ?string, sessionId?: ?string, workdir?: ?string}  $options
      * @return array{success: bool, result: ?string, error: ?string, session_id: ?string, raw: mixed}
      */
     public function run(string $prompt, array $options = []): array
     {
-        $workdir = config('services.claude_cli.workdir');
+        $workdir = ($options['workdir'] ?? null) ?: config('services.claude_cli.workdir');
 
         File::ensureDirectoryExists($workdir);
 
@@ -81,6 +82,13 @@ class ClaudeCli
             '-p', $prompt,
             '--output-format', 'json',
         ];
+
+        $permissionMode = config('services.claude_cli.permission_mode');
+
+        if ($permissionMode !== null && $permissionMode !== '') {
+            $command[] = '--permission-mode';
+            $command[] = $permissionMode;
+        }
 
         $sessionId = $options['sessionId'] ?? null;
 

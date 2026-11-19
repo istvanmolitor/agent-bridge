@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(AdminUserSeeder::class);
+        $this->call(WorkspaceSeeder::class);
         $this->call(AgentSeeder::class);
     }
 }

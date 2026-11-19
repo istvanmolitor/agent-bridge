@@ -39,6 +39,7 @@ return [
         'binary' => env('CLAUDE_CLI_BINARY', 'claude'),
         'workdir' => env('CLAUDE_CLI_WORKDIR', storage_path('app/claude-cli')),
         'timeout' => env('CLAUDE_CLI_TIMEOUT', 120),
+        'permission_mode' => env('CLAUDE_CLI_PERMISSION_MODE', 'acceptEdits'),
     ],
 
 ];

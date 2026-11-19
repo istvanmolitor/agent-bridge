@@ -7,10 +7,10 @@ test('guests are redirected to the login page', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('the dashboard redirects to the playground', function () {
+test('the dashboard redirects to the chat', function () {
     $user = User::factory()->create();
     $this->actingAs($user);
 
     $response = $this->get(route('dashboard'));
-    $response->assertRedirect('/admin/playground');
+    $response->assertRedirect('/admin/chat');
 });

@@ -20,10 +20,22 @@ class ApiKeyController extends Controller
     {
         return Inertia::render('admin/ApiKeys', [
             'apiKeys' => $request->user()->apiKeys()
-                ->with('agent:id,name')
+                ->with(['agentSession.agent:id,name', 'agentSession.workspace:id,name'])
                 ->latest()
-                ->get(['id', 'agent_id', 'name', 'plain_token', 'last_used_at', 'created_at']),
+                ->get(['id', 'agent_session_id', 'name', 'token', 'last_used_at', 'created_at'])
+                ->map(fn (ApiKey $apiKey) => [
+                    'id' => $apiKey->id,
+                    'name' => $apiKey->name,
+                    'token' => $apiKey->token,
+                    'last_used_at' => $apiKey->last_used_at,
+                    'created_at' => $apiKey->created_at,
+                    'agent' => $apiKey->agentSession?->agent,
+                    'workspace' => $apiKey->agentSession?->workspace,
+                ]),
             'agents' => $request->user()->agents()
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'workspaces' => $request->user()->workspaces()
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ]);
@@ -34,16 +46,17 @@ class ApiKeyController extends Controller
      */
     public function store(ApiKeyStoreRequest $request): RedirectResponse
     {
-        $plainTextToken = ApiKey::generatePlainTextToken();
-
-        $request->user()->apiKeys()->create([
+        $session = $request->user()->agentSessions()->create([
             'agent_id' => $request->validated('agent_id'),
-            'name' => $request->validated('name'),
-            'token' => ApiKey::hashToken($plainTextToken),
-            'plain_token' => $plainTextToken,
+            'workspace_id' => $request->validated('workspace_id'),
         ]);
 
-        Inertia::flash('generatedApiKey', $plainTextToken);
+        $request->user()->apiKeys()->create([
+            'agent_session_id' => $session->id,
+            'name' => $request->validated('name'),
+            'token' => ApiKey::generateToken(),
+        ]);
+
         Inertia::flash('toast', ['type' => 'success', 'message' => __('API key created.')]);
 
         return to_route('admin.api-keys.index');

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from "@inertiajs/vue3";
-import { Bot, KeyRound, ScrollText, TerminalSquare } from "@lucide/vue";
+import { Bot, Folder, KeyRound, ScrollText, TerminalSquare } from "@lucide/vue";
 import { computed } from "vue";
 import AppLogo from "@/components/AppLogo.vue";
 import NavMain from "@/components/NavMain.vue";
@@ -17,7 +17,8 @@ import {
 import { index as indexAdminAgents } from "@/routes/admin/agents";
 import { index as indexAdminApiKeys } from "@/routes/admin/api-keys";
 import { index as indexAdminLogs } from "@/routes/admin/logs";
-import { edit as editAdminPlayground } from "@/routes/admin/playground";
+import { index as indexAdminChat } from "@/routes/admin/chat";
+import { index as indexAdminWorkspaces } from "@/routes/admin/workspaces";
 import type { NavItem } from "@/types";
 
 const page = usePage();
@@ -25,8 +26,8 @@ const page = usePage();
 const mainNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
         {
-            title: "Playground",
-            href: editAdminPlayground(),
+            title: "Chat",
+            href: indexAdminChat(),
             icon: TerminalSquare,
         },
     ];
@@ -37,6 +38,11 @@ const mainNavItems = computed<NavItem[]>(() => {
                 title: "Ügynökök",
                 href: indexAdminAgents(),
                 icon: Bot,
+            },
+            {
+                title: "Munkaterületek",
+                href: indexAdminWorkspaces(),
+                icon: Folder,
             },
             {
                 title: "API kulcsok",
@@ -61,7 +67,7 @@ const mainNavItems = computed<NavItem[]>(() => {
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="editAdminPlayground()">
+                        <Link :href="indexAdminChat()">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>

@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
-import {
-    Bot,
-    KeyRound,
-    LayoutGrid,
-    ScrollText,
-    TerminalSquare,
-} from '@lucide/vue';
-import { computed } from 'vue';
-import AppLogo from '@/components/AppLogo.vue';
-import NavMain from '@/components/NavMain.vue';
-import NavUser from '@/components/NavUser.vue';
+import { Link, usePage } from "@inertiajs/vue3";
+import { Bot, KeyRound, ScrollText, TerminalSquare } from "@lucide/vue";
+import { computed } from "vue";
+import AppLogo from "@/components/AppLogo.vue";
+import NavMain from "@/components/NavMain.vue";
+import NavUser from "@/components/NavUser.vue";
 import {
     Sidebar,
     SidebarContent,
@@ -19,46 +13,40 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
-import { index as indexAdminAgents } from '@/routes/admin/agents';
-import { index as indexAdminApiKeys } from '@/routes/admin/api-keys';
-import { index as indexAdminLogs } from '@/routes/admin/logs';
-import { edit as editAdminPlayground } from '@/routes/admin/playground';
-import type { NavItem } from '@/types';
+} from "@/components/ui/sidebar";
+import { index as indexAdminAgents } from "@/routes/admin/agents";
+import { index as indexAdminApiKeys } from "@/routes/admin/api-keys";
+import { index as indexAdminLogs } from "@/routes/admin/logs";
+import { edit as editAdminPlayground } from "@/routes/admin/playground";
+import type { NavItem } from "@/types";
 
 const page = usePage();
 
 const mainNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
         {
-            title: 'Vezérlőpult',
-            href: dashboard(),
-            icon: LayoutGrid,
+            title: "Playground",
+            href: editAdminPlayground(),
+            icon: TerminalSquare,
         },
     ];
 
     if (page.props.auth.user.is_admin) {
         items.push(
             {
-                title: 'Ügynökök',
+                title: "Ügynökök",
                 href: indexAdminAgents(),
                 icon: Bot,
             },
             {
-                title: 'API kulcsok',
+                title: "API kulcsok",
                 href: indexAdminApiKeys(),
                 icon: KeyRound,
             },
             {
-                title: 'Logok',
+                title: "Logok",
                 href: indexAdminLogs(),
                 icon: ScrollText,
-            },
-            {
-                title: 'Playground',
-                href: editAdminPlayground(),
-                icon: TerminalSquare,
             },
         );
     }
@@ -73,7 +61,7 @@ const mainNavItems = computed<NavItem[]>(() => {
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="dashboard()">
+                        <Link :href="editAdminPlayground()">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>

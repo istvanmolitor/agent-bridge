@@ -18,10 +18,14 @@ class PromptLogController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'api_key_id' => ['nullable', 'integer'],
+            'agent_id' => ['nullable', 'integer'],
+            'workspace_id' => ['nullable', 'integer'],
         ]);
 
         $search = $validated['search'] ?? null;
         $apiKeyId = $validated['api_key_id'] ?? null;
+        $agentId = $validated['agent_id'] ?? null;
+        $workspaceId = $validated['workspace_id'] ?? null;
 
         $logs = PromptLog::forUser($request->user()->id)
             ->with('agentSession.apiKey:id,agent_session_id,name')
@@ -34,6 +38,14 @@ class PromptLogController extends Controller
             ->when($apiKeyId, fn ($query) => $query->whereHas(
                 'agentSession.apiKey',
                 fn ($q) => $q->where('id', $apiKeyId),
+            ))
+            ->when($agentId, fn ($query) => $query->whereHas(
+                'agentSession',
+                fn ($q) => $q->where('agent_id', $agentId),
+            ))
+            ->when($workspaceId, fn ($query) => $query->whereHas(
+                'agentSession',
+                fn ($q) => $q->where('workspace_id', $workspaceId),
             ))
             ->latest()
             ->paginate(20)
@@ -56,9 +68,17 @@ class PromptLogController extends Controller
             'apiKeys' => $request->user()->apiKeys()
                 ->orderBy('name')
                 ->get(['id', 'name']),
+            'agents' => $request->user()->agents()
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'workspaces' => $request->user()->workspaces()
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'filters' => [
                 'search' => $search,
                 'api_key_id' => $apiKeyId !== null ? (string) $apiKeyId : null,
+                'agent_id' => $agentId !== null ? (string) $agentId : null,
+                'workspace_id' => $workspaceId !== null ? (string) $workspaceId : null,
             ],
         ]);
     }

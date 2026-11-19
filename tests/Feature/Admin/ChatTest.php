@@ -15,6 +15,35 @@ test('the chat page is displayed to an admin', function () {
         ->assertInertia(fn (Assert $page) => $page->component('admin/Chat'));
 });
 
+test('sessions are listed with the most recently used one first', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    // Used recently, but created a while ago.
+    $recentlyUsed = AgentSession::factory()->for($admin)->create([
+        'created_at' => now()->subDays(2),
+        'last_used_at' => now()->subMinutes(5),
+    ]);
+
+    // Brand new session that has never been used yet.
+    $brandNew = AgentSession::factory()->fresh()->for($admin)->create([
+        'created_at' => now(),
+    ]);
+
+    // Used long ago.
+    $stale = AgentSession::factory()->for($admin)->create([
+        'created_at' => now()->subDays(10),
+        'last_used_at' => now()->subDays(3),
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.chat.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/Chat')
+            ->where('sessions.0.id', $brandNew->id)
+            ->where('sessions.1.id', $recentlyUsed->id)
+            ->where('sessions.2.id', $stale->id));
+});
+
 test('guests are redirected to login for the chat page', function () {
     $this->get(route('admin.chat.index'))->assertRedirect(route('login'));
 });

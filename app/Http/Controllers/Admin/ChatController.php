@@ -23,7 +23,7 @@ class ChatController extends Controller
     {
         $sessions = $request->user()->agentSessions()
             ->with(['agent:id,name', 'workspace:id,name'])
-            ->latest('last_used_at')
+            ->orderByRaw('COALESCE(last_used_at, created_at) DESC')
             ->latest('id')
             ->get(['id', 'agent_id', 'workspace_id', 'session_id', 'last_used_at', 'created_at'])
             ->map(fn (AgentSession $session) => [

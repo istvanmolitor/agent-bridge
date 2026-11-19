@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { Bot, Check, Copy, Folder, KeyRound } from '@lucide/vue';
 import { ref } from 'vue';
 import ApiKeyController from '@/actions/App/Http/Controllers/Admin/ApiKeyController';
 import Heading from '@/components/Heading.vue';
@@ -224,22 +225,32 @@ async function copyRowToken(apiKey: ApiKey) {
             <div
                 v-for="apiKey in apiKeys"
                 :key="apiKey.id"
-                class="flex items-center justify-between gap-4 p-4"
+                class="flex items-start gap-4 p-4"
             >
-                <div class="min-w-0 flex-1 space-y-2">
-                    <p class="font-medium">
-                        {{ apiKey.name }}
+                <div
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+                >
+                    <KeyRound class="h-4 w-4" />
+                </div>
+
+                <div class="min-w-0 flex-1 space-y-3">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span class="font-medium">{{ apiKey.name }}</span>
                         <span
                             v-if="apiKey.agent"
-                            class="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground"
-                            >{{ apiKey.agent.name }}</span
+                            class="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                         >
+                            <Bot class="h-3 w-3" />
+                            {{ apiKey.agent.name }}
+                        </span>
                         <span
                             v-if="apiKey.workspace"
-                            class="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground"
-                            >📁 {{ apiKey.workspace.name }}</span
+                            class="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                         >
-                    </p>
+                            <Folder class="h-3 w-3" />
+                            {{ apiKey.workspace.name }}
+                        </span>
+                    </div>
 
                     <div class="flex max-w-md items-center gap-2">
                         <Input
@@ -250,8 +261,14 @@ async function copyRowToken(apiKey: ApiKey) {
                         <Button
                             variant="secondary"
                             size="sm"
+                            class="gap-1.5"
                             @click="copyRowToken(apiKey)"
                         >
+                            <Check
+                                v-if="copiedRowId === apiKey.id"
+                                class="h-3.5 w-3.5"
+                            />
+                            <Copy v-else class="h-3.5 w-3.5" />
                             {{
                                 copiedRowId === apiKey.id
                                     ? 'Kimásolva'
@@ -260,7 +277,7 @@ async function copyRowToken(apiKey: ApiKey) {
                         </Button>
                     </div>
 
-                    <p class="text-sm text-muted-foreground">
+                    <p class="text-xs text-muted-foreground">
                         Létrehozva: {{ formatDate(apiKey.created_at) }} ·
                         Utoljára használva:
                         {{ formatDate(apiKey.last_used_at) }}

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { index } from '@/routes/admin/logs';
 
-type ApiKey = {
+type Option = {
     id: number;
     name: string;
 };
@@ -43,10 +43,14 @@ type Paginator<T> = {
 
 const props = defineProps<{
     logs: Paginator<PromptLog>;
-    apiKeys: ApiKey[];
+    apiKeys: Option[];
+    agents: Option[];
+    workspaces: Option[];
     filters: {
         search: string | null;
         api_key_id: string | null;
+        agent_id: string | null;
+        workspace_id: string | null;
     };
 }>();
 
@@ -61,10 +65,12 @@ defineOptions({
     },
 });
 
-const ALL_KEYS = 'all';
+const ALL = 'all';
 
 const search = ref(props.filters.search ?? '');
-const apiKeyId = ref(props.filters.api_key_id ?? ALL_KEYS);
+const apiKeyId = ref(props.filters.api_key_id ?? ALL);
+const agentId = ref(props.filters.agent_id ?? ALL);
+const workspaceId = ref(props.filters.workspace_id ?? ALL);
 const expanded = ref<number | null>(null);
 
 function applyFilters() {
@@ -72,7 +78,10 @@ function applyFilters() {
         index().url,
         {
             search: search.value || undefined,
-            api_key_id: apiKeyId.value === ALL_KEYS ? undefined : apiKeyId.value,
+            api_key_id: apiKeyId.value === ALL ? undefined : apiKeyId.value,
+            agent_id: agentId.value === ALL ? undefined : agentId.value,
+            workspace_id:
+                workspaceId.value === ALL ? undefined : workspaceId.value,
         },
         {
             preserveState: true,
@@ -89,7 +98,7 @@ watch(search, () => {
     searchTimeout = window.setTimeout(applyFilters, 350);
 });
 
-watch(apiKeyId, () => {
+watch([apiKeyId, agentId, workspaceId], () => {
     window.clearTimeout(searchTimeout);
     applyFilters();
 });
@@ -123,12 +132,44 @@ function formatDate(value: string | null): string {
                 class="sm:max-w-sm"
             />
 
+            <Select v-model="workspaceId">
+                <SelectTrigger class="sm:w-48">
+                    <SelectValue placeholder="Összes munkaterület" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem :value="ALL">Összes munkaterület</SelectItem>
+                    <SelectItem
+                        v-for="workspace in workspaces"
+                        :key="workspace.id"
+                        :value="String(workspace.id)"
+                    >
+                        {{ workspace.name }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select v-model="agentId">
+                <SelectTrigger class="sm:w-48">
+                    <SelectValue placeholder="Összes ügynök" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem :value="ALL">Összes ügynök</SelectItem>
+                    <SelectItem
+                        v-for="agent in agents"
+                        :key="agent.id"
+                        :value="String(agent.id)"
+                    >
+                        {{ agent.name }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+
             <Select v-model="apiKeyId">
-                <SelectTrigger class="sm:w-56">
+                <SelectTrigger class="sm:w-48">
                     <SelectValue placeholder="Összes kulcs" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem :value="ALL_KEYS">Összes kulcs</SelectItem>
+                    <SelectItem :value="ALL">Összes kulcs</SelectItem>
                     <SelectItem
                         v-for="apiKey in apiKeys"
                         :key="apiKey.id"

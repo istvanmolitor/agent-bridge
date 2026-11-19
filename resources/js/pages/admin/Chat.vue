@@ -3,9 +3,11 @@ import { Head, router, useHttp } from "@inertiajs/vue3";
 import {
     ChevronDown,
     ChevronRight,
-    FolderTree,
+    Folder,
+    LoaderCircle,
     Plus,
     RefreshCw,
+    SendHorizontal,
 } from "@lucide/vue";
 import { computed, nextTick, ref, watch, type Ref } from "vue";
 import FileTree from "@/components/FileTree.vue";
@@ -259,7 +261,7 @@ function formatDate(value: string | null): string {
 
     <h1 class="sr-only">Chat</h1>
 
-    <div class="flex h-full min-h-0">
+    <div class="flex h-[calc(100svh-4rem)] min-h-0">
         <!-- Sessions sidebar -->
         <aside class="flex w-72 shrink-0 flex-col border-r">
             <div class="border-b p-3">
@@ -302,7 +304,7 @@ function formatDate(value: string | null): string {
                     <span
                         class="flex items-center gap-1 text-xs text-muted-foreground"
                     >
-                        <FolderTree class="h-3 w-3 shrink-0" />
+                        <Folder class="h-3 w-3 shrink-0" />
                         {{ session.workspace?.name ?? "—" }}
                     </span>
                     <span class="text-xs text-muted-foreground">
@@ -342,7 +344,7 @@ function formatDate(value: string | null): string {
                         data-test="chat-workspace"
                         @click="workspaceOpen = true"
                     >
-                        <FolderTree class="h-4 w-4" />
+                        <Folder class="h-4 w-4" />
                         Munkaterület
                     </Button>
                 </div>
@@ -455,27 +457,41 @@ function formatDate(value: string | null): string {
                 </div>
 
                 <!-- Composer -->
-                <div class="space-y-2">
-                    <Textarea
-                        v-model="http.prompt"
-                        rows="4"
-                        placeholder="Kérdezz valamit…"
-                        data-test="chat-prompt"
-                        @keydown.enter.exact.prevent="submit"
-                    />
-                    <InputError :message="http.errors.prompt" />
+                <div class="shrink-0 space-y-2">
+                    <div class="flex items-end gap-2">
+                        <Textarea
+                            v-model="http.prompt"
+                            rows="3"
+                            class="flex-1"
+                            placeholder="Kérdezz valamit…"
+                            data-test="chat-prompt"
+                            @keydown.enter.exact.prevent="submit"
+                        />
 
-                    <Button
-                        :disabled="
-                            http.processing ||
-                            http.prompt.trim() === '' ||
-                            !http.agent_session_id
-                        "
-                        data-test="chat-submit"
-                        @click="submit"
-                    >
-                        {{ http.processing ? "Futtatás…" : "Prompt futtatása" }}
-                    </Button>
+                        <Button
+                            size="icon"
+                            :disabled="
+                                http.processing ||
+                                http.prompt.trim() === '' ||
+                                !http.agent_session_id
+                            "
+                            :title="
+                                http.processing
+                                    ? 'Futtatás…'
+                                    : 'Prompt futtatása'
+                            "
+                            aria-label="Prompt futtatása"
+                            data-test="chat-submit"
+                            @click="submit"
+                        >
+                            <LoaderCircle
+                                v-if="http.processing"
+                                class="h-4 w-4 animate-spin"
+                            />
+                            <SendHorizontal v-else class="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <InputError :message="http.errors.prompt" />
                 </div>
             </template>
         </section>
@@ -546,7 +562,9 @@ function formatDate(value: string | null): string {
 
     <!-- Workspace modal -->
     <Dialog v-model:open="workspaceOpen">
-        <DialogContent class="h-[80vh] max-w-4xl gap-0 overflow-hidden p-0">
+        <DialogContent
+            class="flex h-[95vh] w-[95vw] max-w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[95vw]"
+        >
             <DialogHeader class="border-b px-4 py-3">
                 <DialogTitle>
                     Munkaterület
@@ -558,7 +576,7 @@ function formatDate(value: string | null): string {
 
             <div
                 v-if="workspace"
-                class="grid min-h-0 flex-1 grid-cols-2 divide-x"
+                class="grid min-h-0 flex-1 grid-cols-[1fr_2fr] divide-x"
             >
                 <div class="min-h-0 overflow-hidden">
                     <FileTree

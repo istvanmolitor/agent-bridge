@@ -20,6 +20,7 @@ class WorkflowNodeFactory extends Factory
     {
         return [
             'workflow_id' => Workflow::factory(),
+            'type' => fake()->randomElement(['start', 'agent', 'http_request']),
             'name' => fake()->unique()->words(2, true),
             'description' => fake()->sentence(),
             'position_x' => fake()->randomFloat(2, 0, 800),

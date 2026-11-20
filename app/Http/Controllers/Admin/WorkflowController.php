@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\WorkflowNodeStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\WorkflowRequest;
 use App\Models\Workflow;
+use App\Workflows\NodeRegistry;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -75,9 +78,17 @@ class WorkflowController extends Controller
 
         return Inertia::render('admin/WorkflowShow', [
             'workflow' => $workflow->only(['id', 'name', 'description']),
-            'nodes' => $workflow->nodes()
-                ->orderBy('id')
-                ->get(['id', 'name', 'description', 'position_x', 'position_y']),
+            'nodeTypes' => NodeRegistry::options(),
+            // Live prop: Reverb broadcasts WorkflowNodeStatusChanged on the
+            // workflow's private channel, and Inertia re-fetches the nodes so the
+            // canvas reflects run status without polling.
+            'nodes' => Inertia::live(
+                fn () => $workflow->nodes()
+                    ->orderBy('id')
+                    ->get(['id', 'type', 'name', 'description', 'status', 'position_x', 'position_y']),
+                on: WorkflowNodeStatusChanged::class,
+                channel: new PrivateChannel('workflows.'.$workflow->id),
+            ),
             'connections' => $workflow->connections()
                 ->get(['id', 'source_node_id', 'target_node_id']),
         ]);

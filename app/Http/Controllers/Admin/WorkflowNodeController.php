@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\WorkflowNodeRequest;
 use App\Models\Workflow;
 use App\Models\WorkflowNode;
+use App\Workflows\WorkflowRunner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -56,6 +57,21 @@ class WorkflowNodeController extends Controller
         ]);
 
         $node->update($validated);
+
+        return back();
+    }
+
+    /**
+     * Start the workflow from this node by queueing it for execution.
+     */
+    public function run(Workflow $workflow, WorkflowNode $node, WorkflowRunner $runner): RedirectResponse
+    {
+        Gate::authorize('update', $workflow);
+        abort_unless($node->workflow_id === $workflow->id, 404);
+
+        $runner->run($node);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Workflow started.')]);
 
         return back();
     }

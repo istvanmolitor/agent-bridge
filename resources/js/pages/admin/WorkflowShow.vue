@@ -13,7 +13,16 @@ import {
     useVueFlow,
     VueFlow,
 } from '@vue-flow/core';
-import { Check, Pencil, Plus, Trash2, Unlink, X } from '@lucide/vue';
+import {
+    Check,
+    LoaderCircle,
+    Pencil,
+    Play,
+    Plus,
+    Trash2,
+    Unlink,
+    X,
+} from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -30,6 +39,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { index } from '@/routes/admin/workflows';
 import {
@@ -39,14 +55,27 @@ import {
 import {
     destroy as destroyNode,
     position as positionNode,
+    run as runNode,
     store as storeNode,
     update as updateNode,
 } from '@/routes/admin/workflows/nodes';
 
+type NodeType = {
+    key: string;
+    label: string;
+    description: string;
+    icon: string;
+    color: string;
+    hasInput: boolean;
+    hasOutput: boolean;
+};
+
 type NodeData = {
     id: number;
+    type: string;
     name: string;
     description: string | null;
+    status: string;
     position_x: number;
     position_y: number;
 };
@@ -59,9 +88,14 @@ type ConnectionData = {
 
 const props = defineProps<{
     workflow: { id: number; name: string; description: string | null };
+    nodeTypes: NodeType[];
     nodes: NodeData[];
     connections: ConnectionData[];
 }>();
+
+const typeMap = computed<Record<string, NodeType>>(() =>
+    Object.fromEntries(props.nodeTypes.map((type) => [type.key, type])),
+);
 
 defineOptions({
     layout: {
@@ -82,7 +116,12 @@ type FlowNode = {
     id: string;
     type: string;
     position: { x: number; y: number };
-    data: { name: string; description: string | null };
+    data: {
+        nodeType: string;
+        name: string;
+        description: string | null;
+        status: string;
+    };
 };
 
 type FlowEdge = {
@@ -100,7 +139,12 @@ function toVfNode(node: NodeData): FlowNode {
         id: String(node.id),
         type: 'workflow',
         position: { x: node.position_x, y: node.position_y },
-        data: { name: node.name, description: node.description },
+        data: {
+            nodeType: node.type,
+            name: node.name,
+            description: node.description,
+            status: node.status,
+        },
     };
 }
 
@@ -124,7 +168,12 @@ function syncNodes(): void {
         const current = existing.get(String(node.id));
 
         if (current) {
-            current.data = { name: node.name, description: node.description };
+            current.data = {
+                nodeType: node.type,
+                name: node.name,
+                description: node.description,
+                status: node.status,
+            };
             next.push(current);
         } else {
             next.push(toVfNode(node));
@@ -211,7 +260,13 @@ function nextPosition(): { position_x: number; position_y: number } {
 }
 
 const createOpen = ref(false);
-const createForm = useForm({ name: '', description: '', position_x: 0, position_y: 0 });
+const createForm = useForm({
+    type: props.nodeTypes[0]?.key ?? 'agent',
+    name: '',
+    description: '',
+    position_x: 0,
+    position_y: 0,
+});
 
 function submitCreate(): void {
     createForm
@@ -251,6 +306,14 @@ function submitEdit(): void {
     });
 }
 
+function runStart(nodeId: string): void {
+    router.post(
+        runNode.url([props.workflow.id, Number(nodeId)]),
+        {},
+        { preserveScroll: true, preserveState: true },
+    );
+}
+
 const deleting = ref<NodeData | null>(null);
 
 function confirmDelete(): void {
@@ -266,6 +329,10 @@ function confirmDelete(): void {
         },
     });
 }
+
+// The node run status arrives over Reverb: the `nodes` prop is declared live on
+// the server (WorkflowController::show), so Inertia re-fetches it whenever a
+// WorkflowNodeStatusChanged event is broadcast on this workflow's channel.
 </script>
 
 <template>
@@ -297,6 +364,31 @@ function confirmDelete(): void {
                                 Add meg a node nevét és egy leírását.
                             </DialogDescription>
                         </DialogHeader>
+
+                        <div class="grid gap-2">
+                            <Label for="node-type">Típus</Label>
+                            <Select v-model="createForm.type">
+                                <SelectTrigger id="node-type">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem
+                                        v-for="nodeType in nodeTypes"
+                                        :key="nodeType.key"
+                                        :value="nodeType.key"
+                                    >
+                                        {{ nodeType.label }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p
+                                v-if="typeMap[createForm.type]?.description"
+                                class="text-xs text-ink-muted"
+                            >
+                                {{ typeMap[createForm.type].description }}
+                            </p>
+                            <InputError :message="createForm.errors.type" />
+                        </div>
 
                         <div class="grid gap-2">
                             <Label for="node-name">Név</Label>
@@ -368,6 +460,21 @@ function confirmDelete(): void {
                         class="flex items-start justify-between gap-2 p-4"
                     >
                         <div class="min-w-0 space-y-1">
+                            <span
+                                class="inline-flex items-center gap-1.5 text-xs font-medium"
+                                :style="{
+                                    color: typeMap[node.type]?.color,
+                                }"
+                            >
+                                <span
+                                    class="size-2 rounded-full"
+                                    :style="{
+                                        backgroundColor:
+                                            typeMap[node.type]?.color,
+                                    }"
+                                />
+                                {{ typeMap[node.type]?.label ?? node.type }}
+                            </span>
                             <p class="truncate font-medium text-ink">
                                 {{ node.name }}
                             </p>
@@ -424,9 +531,45 @@ function confirmDelete(): void {
                     <Background :gap="16" />
                     <Controls />
 
-                    <template #node-workflow="{ data }">
-                        <div class="workflow-node">
-                            <Handle type="target" :position="Position.Left" />
+                    <template #node-workflow="{ id, data }">
+                        <div
+                            class="workflow-node"
+                            :class="{
+                                'workflow-node--running':
+                                    data.status === 'running',
+                            }"
+                            :style="{
+                                borderLeftColor:
+                                    data.status === 'running'
+                                        ? '#10b981'
+                                        : (typeMap[data.nodeType]?.color ??
+                                          'var(--color-border)'),
+                            }"
+                        >
+                            <LoaderCircle
+                                v-if="data.status === 'running'"
+                                class="workflow-node__spinner size-4 animate-spin"
+                            />
+
+                            <Handle
+                                v-if="typeMap[data.nodeType]?.hasInput ?? true"
+                                type="target"
+                                :position="Position.Left"
+                            />
+                            <span class="workflow-node__type">
+                                <span
+                                    class="workflow-node__dot"
+                                    :style="{
+                                        backgroundColor:
+                                            typeMap[data.nodeType]?.color ??
+                                            'currentColor',
+                                    }"
+                                />
+                                {{
+                                    typeMap[data.nodeType]?.label ??
+                                    data.nodeType
+                                }}
+                            </span>
                             <p class="workflow-node__title">{{ data.name }}</p>
                             <p
                                 v-if="data.description"
@@ -434,7 +577,22 @@ function confirmDelete(): void {
                             >
                                 {{ data.description }}
                             </p>
-                            <Handle type="source" :position="Position.Right" />
+
+                            <button
+                                v-if="data.nodeType === 'start'"
+                                type="button"
+                                class="nodrag workflow-node__play"
+                                title="Folyamat indítása"
+                                @click="runStart(id)"
+                            >
+                                <Play class="size-7 translate-x-[1px]" fill="currentColor" />
+                            </button>
+
+                            <Handle
+                                v-if="typeMap[data.nodeType]?.hasOutput ?? true"
+                                type="source"
+                                :position="Position.Right"
+                            />
                         </div>
                     </template>
                 </VueFlow>
@@ -525,9 +683,48 @@ function confirmDelete(): void {
     max-width: 220px;
     border-radius: 0.5rem;
     border: 1px solid var(--color-border);
+    border-left-width: 3px;
     background-color: var(--color-surface-200);
     padding: 0.625rem 0.875rem;
     box-shadow: var(--shadow-raised, 0 1px 2px rgb(0 0 0 / 0.2));
+    transition:
+        border-color 150ms ease-out,
+        box-shadow 150ms ease-out;
+}
+
+.workflow-node--running {
+    border-color: #10b981;
+    box-shadow: 0 0 0 1px #10b981, 0 0 14px rgb(16 185 129 / 0.35);
+}
+
+.workflow-node__spinner {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    color: #10b981;
+    background-color: var(--color-surface-200);
+    border-radius: 9999px;
+    padding: 0.125rem;
+    box-sizing: content-box;
+}
+
+.workflow-node__type {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-ink-muted);
+}
+
+.workflow-node__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background-color: currentColor;
 }
 
 .workflow-node__title {
@@ -545,5 +742,31 @@ function confirmDelete(): void {
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.workflow-node__play {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin: 0.75rem auto 0.25rem;
+    border-radius: 9999px;
+    color: #fff;
+    background-color: #10b981;
+    box-shadow: 0 6px 16px rgb(16 185 129 / 0.35);
+    cursor: pointer;
+    transition:
+        transform 120ms ease-out,
+        background-color 120ms ease-out;
+}
+
+.workflow-node__play:hover {
+    background-color: #059669;
+    transform: scale(1.05);
+}
+
+.workflow-node__play:active {
+    transform: scale(0.97);
 }
 </style>

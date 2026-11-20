@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Models\Workflow;
 use App\Models\WorkflowNode;
+use App\Workflows\Nodes\HttpRequestNode;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('the workflows page lists only the current user\'s workflows', function () {
@@ -60,7 +61,10 @@ test('the editor renders the workflow with its nodes and connections', function 
         ->assertInertia(fn (Assert $page) => $page
             ->component('admin/WorkflowShow')
             ->where('workflow.id', $workflow->id)
+            ->has('nodeTypes', 3)
+            ->where('nodeTypes.0.key', 'start')
             ->has('nodes', 2)
+            ->has('nodes.0.type')
             ->has('connections', 1)
             ->where('connections.0.source_node_id', $source->id)
             ->where('connections.0.target_node_id', $target->id),
@@ -83,6 +87,7 @@ test('an admin can add a node to a workflow', function () {
     $this->actingAs($admin)
         ->from(route('admin.workflows.show', $workflow))
         ->post(route('admin.workflows.nodes.store', $workflow), [
+            'type' => 'http_request',
             'name' => 'Letöltés',
             'description' => 'Letölti a cikket',
             'position_x' => 120,
@@ -92,17 +97,27 @@ test('an admin can add a node to a workflow', function () {
 
     $node = $workflow->nodes()->sole();
     expect($node->name)->toBe('Letöltés')
+        ->and($node->type)->toBe('http_request')
         ->and($node->position_x)->toBe(120.0);
 });
 
-test('adding a node requires a name', function () {
+test('adding a node requires a name and a valid type', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $workflow = Workflow::factory()->for($admin)->create();
 
     $this->actingAs($admin)
         ->from(route('admin.workflows.show', $workflow))
-        ->post(route('admin.workflows.nodes.store', $workflow), ['name' => ''])
-        ->assertSessionHasErrors('name');
+        ->post(route('admin.workflows.nodes.store', $workflow), [
+            'name' => '',
+            'type' => 'nonsense',
+        ])
+        ->assertSessionHasErrors(['name', 'type']);
+});
+
+test('a node resolves its type class through the registry', function () {
+    $node = WorkflowNode::factory()->create(['type' => 'http_request']);
+
+    expect($node->typeClass())->toBe(HttpRequestNode::class);
 });
 
 test('a node position can be updated', function () {
@@ -123,8 +138,8 @@ test('a node position can be updated', function () {
 test('an admin can connect two nodes of a workflow', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $workflow = Workflow::factory()->for($admin)->create();
-    $source = WorkflowNode::factory()->for($workflow)->create();
-    $target = WorkflowNode::factory()->for($workflow)->create();
+    $source = WorkflowNode::factory()->for($workflow)->create(['type' => 'agent']);
+    $target = WorkflowNode::factory()->for($workflow)->create(['type' => 'agent']);
 
     $this->actingAs($admin)
         ->post(route('admin.workflows.connections.store', $workflow), [
@@ -162,6 +177,40 @@ test('a connection cannot reference a node from another workflow', function () {
             'target_node_id' => $foreign->id,
         ])
         ->assertSessionHasErrors('target_node_id');
+});
+
+test('a start node cannot be the target of a connection', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $workflow = Workflow::factory()->for($admin)->create();
+    $agent = WorkflowNode::factory()->for($workflow)->create(['type' => 'agent']);
+    $start = WorkflowNode::factory()->for($workflow)->create(['type' => 'start']);
+
+    $this->actingAs($admin)
+        ->from(route('admin.workflows.show', $workflow))
+        ->post(route('admin.workflows.connections.store', $workflow), [
+            'source_node_id' => $agent->id,
+            'target_node_id' => $start->id,
+        ])
+        ->assertSessionHasErrors('target_node_id');
+
+    expect($workflow->connections()->count())->toBe(0);
+});
+
+test('a start node can be the source of a connection', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $workflow = Workflow::factory()->for($admin)->create();
+    $start = WorkflowNode::factory()->for($workflow)->create(['type' => 'start']);
+    $agent = WorkflowNode::factory()->for($workflow)->create(['type' => 'agent']);
+
+    $this->actingAs($admin)
+        ->from(route('admin.workflows.show', $workflow))
+        ->post(route('admin.workflows.connections.store', $workflow), [
+            'source_node_id' => $start->id,
+            'target_node_id' => $agent->id,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($workflow->connections()->count())->toBe(1);
 });
 
 test('deleting a node cascades its connections', function () {

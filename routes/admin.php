@@ -42,6 +42,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('workflows/{workflow}/nodes', [WorkflowNodeController::class, 'store'])->name('workflows.nodes.store');
     Route::put('workflows/{workflow}/nodes/{node}', [WorkflowNodeController::class, 'update'])->name('workflows.nodes.update');
     Route::patch('workflows/{workflow}/nodes/{node}/position', [WorkflowNodeController::class, 'position'])->name('workflows.nodes.position');
+    Route::post('workflows/{workflow}/nodes/{node}/run', [WorkflowNodeController::class, 'run'])->name('workflows.nodes.run');
     Route::delete('workflows/{workflow}/nodes/{node}', [WorkflowNodeController::class, 'destroy'])->name('workflows.nodes.destroy');
 
     Route::post('workflows/{workflow}/connections', [WorkflowConnectionController::class, 'store'])->name('workflows.connections.store');

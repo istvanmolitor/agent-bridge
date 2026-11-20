@@ -9,6 +9,13 @@ Route::get('/', function () {
         : redirect()->route('login');
 })->name('home');
 
+Route::get('/api/docs', fn () => view('api-docs'))->name('api.docs');
+
+Route::get('/api/openapi.yaml', function () {
+    return response()
+        ->file(resource_path('api/openapi.yaml'), ['Content-Type' => 'application/yaml']);
+})->name('api.docs.openapi');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::redirect('dashboard', '/admin/chat')->name('dashboard');
 });

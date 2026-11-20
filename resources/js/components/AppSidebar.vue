@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
+    BookOpen,
     Bot,
     Folder,
     KeyRound,
+    MessageSquareText,
     ScrollText,
     TerminalSquare,
     Users,
@@ -24,6 +26,7 @@ import {
 import { index as indexAdminAgents } from '@/routes/admin/agents';
 import { index as indexAdminApiKeys } from '@/routes/admin/api-keys';
 import { index as indexAdminLogs } from '@/routes/admin/logs';
+import { index as indexAdminPrompts } from '@/routes/admin/prompts';
 import { index as indexAdminUsers } from '@/routes/admin/users';
 import { index as indexAdminChat } from '@/routes/admin/chat';
 import { index as indexAdminWorkspaces } from '@/routes/admin/workspaces';
@@ -48,6 +51,11 @@ const mainNavItems = computed<NavItem[]>(() => {
                 icon: Bot,
             },
             {
+                title: 'Promptok',
+                href: indexAdminPrompts(),
+                icon: MessageSquareText,
+            },
+            {
                 title: 'Munkaterületek',
                 href: indexAdminWorkspaces(),
                 icon: Folder,
@@ -69,6 +77,13 @@ const mainNavItems = computed<NavItem[]>(() => {
             },
         );
     }
+
+    items.push({
+        title: 'Dokumentáció',
+        href: '/api/docs',
+        icon: BookOpen,
+        external: true,
+    });
 
     return items;
 });

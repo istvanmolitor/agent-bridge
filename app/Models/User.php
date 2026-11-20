@@ -77,4 +77,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Workspace::class);
     }
+
+    /**
+     * @return HasMany<Prompt, $this>
+     */
+    public function prompts(): HasMany
+    {
+        return $this->hasMany(Prompt::class);
+    }
 }

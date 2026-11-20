@@ -1,0 +1,288 @@
+openapi: 3.1.0
+info:
+  title: Agent Bridge API
+  version: 1.0.0
+  description: |
+    Az Agent Bridge egy HTTP híd a helyben telepített `claude` CLI elé.
+    Egyetlen végponton keresztül küldhetsz promptot egy előre konfigurált
+    **agent** nevében, és visszakapod a Claude válaszát JSON formátumban.
+
+    A beszélgetés állapotát (session) az API kulcs automatikusan megőrzi, így
+    a következő hívások ugyanazt a beszélgetést folytatják. A system promptot,
+    a modellt és a prompt módot az API kulcshoz rendelt agent határozza meg.
+  contact:
+    name: Agent Bridge
+
+servers:
+  - url: /
+    description: Jelenlegi szerver
+
+tags:
+  - name: Prompt
+    description: Prompt küldése az agentnek
+  - name: Promptkönyvtár
+    description: Elnevezett promptok lekérése név alapján
+
+security:
+  - apiKey: []
+
+paths:
+  /api/prompt:
+    post:
+      tags: [Prompt]
+      summary: Prompt küldése
+      operationId: storePrompt
+      description: |
+        Elküld egy promptot a kulcshoz tartozó agentnek, és visszaadja a
+        Claude válaszát. A session automatikus — nem kell `session_id`-t küldeni.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptRequest'
+            examples:
+              alap:
+                summary: Egyszerű prompt
+                value:
+                  prompt: Foglald össze egy mondatban, mi az a Laravel.
+      responses:
+        '200':
+          description: Sikeres futás
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptResponse'
+              examples:
+                siker:
+                  value:
+                    success: true
+                    result: A Laravel egy PHP keretrendszer webalkalmazások fejlesztéséhez.
+                    error: null
+                    agent_session:
+                      id: 12
+                      agent_id: 3
+                      workspace_id: 1
+                      session_id: b1d2c3e4-0000-0000-0000-000000000000
+                      last_used_at: '2026-11-19T10:00:00.000000Z'
+                      created_at: '2026-11-18T09:00:00.000000Z'
+                      updated_at: '2026-11-19T10:00:00.000000Z'
+                    raw:
+                      type: result
+        '401':
+          description: Hiányzó vagy érvénytelen API kulcs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+              examples:
+                nincs_kulcs:
+                  value:
+                    message: Invalid or missing API key.
+        '422':
+          description: Validációs hiba
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                hianyzo_prompt:
+                  value:
+                    message: The prompt field is required.
+                    errors:
+                      prompt:
+                        - The prompt field is required.
+        '502':
+          description: A claude CLI hibát adott vagy nem válaszolt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptResponse'
+              examples:
+                hiba:
+                  value:
+                    success: false
+                    result: null
+                    error: The claude command exited with an error.
+                    agent_session:
+                      id: 12
+                      agent_id: 3
+                      workspace_id: 1
+                      session_id: null
+                      last_used_at: null
+                      created_at: '2026-11-18T09:00:00.000000Z'
+                      updated_at: '2026-11-18T09:00:00.000000Z'
+                    raw: null
+
+  /api/prompts/{name}:
+    get:
+      tags: [Promptkönyvtár]
+      summary: Prompt lekérése név alapján
+      operationId: showPrompt
+      description: |
+        Visszaadja a kulcs tulajdonosához tartozó, elnevezett prompt tartalmát
+        a neve alapján.
+      security:
+        - apiKey: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: A tárolt prompt egyedi neve.
+          schema:
+            type: string
+          example: udvozlo-szoveg
+      responses:
+        '200':
+          description: A megtalált prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoredPrompt'
+              examples:
+                siker:
+                  value:
+                    id: 7
+                    name: udvozlo-szoveg
+                    content: Üdvözöllek! Miben segíthetek ma?
+                    created_at: '2026-11-20T09:00:00.000000Z'
+                    updated_at: '2026-11-20T09:00:00.000000Z'
+        '401':
+          description: Hiányzó vagy érvénytelen API kulcs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+              examples:
+                nincs_kulcs:
+                  value:
+                    message: Invalid or missing API key.
+        '404':
+          description: Nincs ilyen nevű prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+              examples:
+                nincs_talalat:
+                  value:
+                    message: 'No query results for model [App\Models\Prompt].'
+
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: cc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      description: |
+        Bearer token az `Authorization` fejlécben. A kulcs formátuma `cc_`
+        előtag + 40 karakter. A teljes kulcsot csak létrehozáskor látod.
+
+  schemas:
+    PromptRequest:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+          maxLength: 20000
+          description: A promptszöveg, amit az agent megkap.
+          example: Szia, ki vagy?
+
+    PromptResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: A futás sikeres volt-e.
+        result:
+          type: [string, 'null']
+          description: Az agent válasza.
+        error:
+          type: [string, 'null']
+          description: Hibaüzenet, ha volt hiba.
+        agent_session:
+          $ref: '#/components/schemas/AgentSession'
+        raw:
+          description: A claude CLI teljes, nyers JSON kimenete.
+      required: [success, result, error, agent_session, raw]
+
+    AgentSession:
+      type: object
+      description: A kulcshoz tartozó beszélgetés (session) tárolt adatai.
+      properties:
+        id:
+          type: integer
+          description: A session azonosítója az adatbázisban.
+        agent_id:
+          type: integer
+          description: A sessionhöz tartozó agent azonosítója.
+        workspace_id:
+          type: [integer, 'null']
+          description: A sessionhöz tartozó munkaterület azonosítója (ha van).
+        session_id:
+          type: [string, 'null']
+          description: A claude CLI beszélgetés azonosítója. A szerver automatikusan tárolja és frissíti.
+        last_used_at:
+          type: [string, 'null']
+          format: date-time
+          description: Mikor használták utoljára a sessiont.
+        created_at:
+          type: [string, 'null']
+          format: date-time
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+      required: [id, agent_id, workspace_id, session_id, last_used_at, created_at, updated_at]
+
+    StoredPrompt:
+      type: object
+      description: Egy elnevezett, tárolt prompt.
+      properties:
+        id:
+          type: integer
+          description: A prompt azonosítója az adatbázisban.
+        name:
+          type: string
+          description: A prompt egyedi neve.
+        content:
+          type: string
+          description: A prompt szövege.
+        created_at:
+          type: [string, 'null']
+          format: date-time
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+      required: [id, name, content, created_at, updated_at]
+
+    UnauthorizedError:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Invalid or missing API key.
+      required: [message]
+
+    NotFoundError:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'No query results for model [App\Models\Prompt].'
+      required: [message]
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required: [message, errors]

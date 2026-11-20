@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AgentController;
 use App\Http\Controllers\Admin\ApiKeyController;
 use App\Http\Controllers\Admin\ChatController;
+use App\Http\Controllers\Admin\PromptController;
 use App\Http\Controllers\Admin\PromptLogController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkspaceController;
@@ -15,6 +16,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('agents', [AgentController::class, 'store'])->name('agents.store');
     Route::put('agents/{agent}', [AgentController::class, 'update'])->name('agents.update');
     Route::delete('agents/{agent}', [AgentController::class, 'destroy'])->name('agents.destroy');
+
+    Route::get('prompts', [PromptController::class, 'index'])->name('prompts.index');
+    Route::post('prompts', [PromptController::class, 'store'])->name('prompts.store');
+    Route::put('prompts/{prompt}', [PromptController::class, 'update'])->name('prompts.update');
+    Route::delete('prompts/{prompt}', [PromptController::class, 'destroy'])->name('prompts.destroy');
 
     Route::get('workspaces', [WorkspaceController::class, 'index'])->name('workspaces.index');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('workspaces.store');

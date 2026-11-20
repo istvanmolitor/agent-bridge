@@ -41,6 +41,20 @@ class PromptController extends Controller
             'error' => $response['error'],
         ]);
 
-        return response()->json($response, $response['success'] ? 200 : 502);
+        return response()->json([
+            'success' => $response['success'],
+            'result' => $response['result'],
+            'error' => $response['error'],
+            'agent_session' => [
+                'id' => $session->id,
+                'agent_id' => $session->agent_id,
+                'workspace_id' => $session->workspace_id,
+                'session_id' => $session->session_id,
+                'last_used_at' => $session->last_used_at,
+                'created_at' => $session->created_at,
+                'updated_at' => $session->updated_at,
+            ],
+            'raw' => $response['raw'],
+        ], $response['success'] ? 200 : 502);
     }
 }

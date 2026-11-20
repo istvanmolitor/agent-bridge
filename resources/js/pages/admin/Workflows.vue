@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { Check, Pencil, Plus, Trash2, Workflow as WorkflowIcon, X } from '@lucide/vue';
+import {
+    Check,
+    Pencil,
+    Plus,
+    Trash2,
+    Workflow as WorkflowIcon,
+    X,
+} from '@lucide/vue';
 import { ref } from 'vue';
 import WorkflowController from '@/actions/App/Http/Controllers/Admin/WorkflowController';
 import Heading from '@/components/Heading.vue';

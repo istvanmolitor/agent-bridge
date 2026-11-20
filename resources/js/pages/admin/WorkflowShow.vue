@@ -281,6 +281,10 @@ function submitCreate(): void {
         });
 }
 
+const nodeMap = computed<Record<string, NodeData>>(() =>
+    Object.fromEntries(props.nodes.map((node) => [String(node.id), node])),
+);
+
 const editing = ref<NodeData | null>(null);
 const editForm = useForm({ name: '', description: '' });
 
@@ -421,7 +425,10 @@ function confirmDelete(): void {
                                 >
                             </DialogClose>
 
-                            <Button type="submit" :disabled="createForm.processing">
+                            <Button
+                                type="submit"
+                                :disabled="createForm.processing"
+                            >
                                 <Plus /> Node létrehozása
                             </Button>
                         </DialogFooter>
@@ -431,91 +438,19 @@ function confirmDelete(): void {
         </div>
 
         <div
-            class="grid min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface-100 shadow-raised lg:grid-cols-[280px_1fr]"
+            class="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface-100 shadow-raised"
         >
-            <!-- Node list -->
-            <div
-                class="flex min-h-0 flex-col border-b border-border lg:border-r lg:border-b-0"
-            >
-                <div
-                    class="flex items-center justify-between border-b border-border bg-surface-200 px-4 py-3"
-                >
-                    <span class="nova-label">Node-ok</span>
-                    <span class="nova-label text-ink-muted"
-                        >{{ nodes.length }} db</span
-                    >
-                </div>
-
-                <div
-                    v-if="nodes.length === 0"
-                    class="p-4 text-sm text-ink-muted"
-                >
-                    Még nincs node. Hozz létre egyet az „Új node” gombbal.
-                </div>
-
-                <div v-else class="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
-                    <div
-                        v-for="node in nodes"
-                        :key="node.id"
-                        class="flex items-start justify-between gap-2 p-4"
-                    >
-                        <div class="min-w-0 space-y-1">
-                            <span
-                                class="inline-flex items-center gap-1.5 text-xs font-medium"
-                                :style="{
-                                    color: typeMap[node.type]?.color,
-                                }"
-                            >
-                                <span
-                                    class="size-2 rounded-full"
-                                    :style="{
-                                        backgroundColor:
-                                            typeMap[node.type]?.color,
-                                    }"
-                                />
-                                {{ typeMap[node.type]?.label ?? node.type }}
-                            </span>
-                            <p class="truncate font-medium text-ink">
-                                {{ node.name }}
-                            </p>
-                            <p
-                                v-if="node.description"
-                                class="line-clamp-2 text-sm text-ink-muted"
-                            >
-                                {{ node.description }}
-                            </p>
-                        </div>
-
-                        <div class="flex shrink-0 gap-1">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Szerkesztés"
-                                @click="editing = node"
-                            >
-                                <Pencil />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Törlés"
-                                class="text-signal-alert hover:text-signal-alert"
-                                @click="deleting = node"
-                            >
-                                <Trash2 />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Canvas -->
-            <div class="relative min-h-0">
+            <div class="relative h-full min-h-0">
                 <div
                     v-if="selectedEdgeCount > 0"
                     class="absolute top-3 right-3 z-10"
                 >
-                    <Button variant="destructive" size="sm" @click="deleteSelectedEdges">
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        @click="deleteSelectedEdges"
+                    >
                         <Unlink /> Kapcsolat törlése
                     </Button>
                 </div>
@@ -551,6 +486,25 @@ function confirmDelete(): void {
                                 class="workflow-node__spinner size-4 animate-spin"
                             />
 
+                            <div class="workflow-node__actions nodrag">
+                                <button
+                                    type="button"
+                                    class="workflow-node__action"
+                                    aria-label="Szerkesztés"
+                                    @click.stop="editing = nodeMap[id] ?? null"
+                                >
+                                    <Pencil class="size-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    class="workflow-node__action workflow-node__action--danger"
+                                    aria-label="Törlés"
+                                    @click.stop="deleting = nodeMap[id] ?? null"
+                                >
+                                    <Trash2 class="size-3.5" />
+                                </button>
+                            </div>
+
                             <Handle
                                 v-if="typeMap[data.nodeType]?.hasInput ?? true"
                                 type="target"
@@ -585,7 +539,10 @@ function confirmDelete(): void {
                                 title="Folyamat indítása"
                                 @click="runStart(id)"
                             >
-                                <Play class="size-7 translate-x-[1px]" fill="currentColor" />
+                                <Play
+                                    class="size-7 translate-x-[1px]"
+                                    fill="currentColor"
+                                />
                             </button>
 
                             <Handle
@@ -616,7 +573,11 @@ function confirmDelete(): void {
 
                 <div class="grid gap-2">
                     <Label for="edit-node-name">Név</Label>
-                    <Input id="edit-node-name" v-model="editForm.name" required />
+                    <Input
+                        id="edit-node-name"
+                        v-model="editForm.name"
+                        required
+                    />
                     <InputError :message="editForm.errors.name" />
                 </div>
 
@@ -694,7 +655,9 @@ function confirmDelete(): void {
 
 .workflow-node--running {
     border-color: #10b981;
-    box-shadow: 0 0 0 1px #10b981, 0 0 14px rgb(16 185 129 / 0.35);
+    box-shadow:
+        0 0 0 1px #10b981,
+        0 0 14px rgb(16 185 129 / 0.35);
 }
 
 .workflow-node__spinner {
@@ -706,6 +669,48 @@ function confirmDelete(): void {
     border-radius: 9999px;
     padding: 0.125rem;
     box-sizing: content-box;
+}
+
+.workflow-node__actions {
+    position: absolute;
+    top: 0.375rem;
+    right: 0.375rem;
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+}
+
+.workflow-node:hover .workflow-node__actions,
+.workflow-node:focus-within .workflow-node__actions {
+    opacity: 1;
+}
+
+.workflow-node__action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.375rem;
+    color: var(--color-ink-muted);
+    background-color: var(--color-surface-100);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition:
+        color 120ms ease-out,
+        background-color 120ms ease-out,
+        border-color 120ms ease-out;
+}
+
+.workflow-node__action:hover {
+    color: var(--color-ink);
+    background-color: var(--color-surface-200);
+}
+
+.workflow-node__action--danger:hover {
+    color: var(--color-signal-alert, #ef4444);
+    border-color: var(--color-signal-alert, #ef4444);
 }
 
 .workflow-node__type {

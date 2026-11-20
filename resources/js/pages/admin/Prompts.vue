@@ -216,9 +216,7 @@ const editing = ref<Prompt | null>(null);
                                             :default-value="prompt.content"
                                             required
                                         />
-                                        <InputError
-                                            :message="errors.content"
-                                        />
+                                        <InputError :message="errors.content" />
                                     </div>
 
                                     <DialogFooter class="gap-2">

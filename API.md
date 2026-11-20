@@ -36,21 +36,21 @@ Elküld egy promptot a kulcshoz tartozó agentnek, és visszaadja a Claude vála
 
 #### Kérés fejlécek
 
-| Fejléc          | Érték                         |
-| --------------- | ----------------------------- |
-| `Authorization` | `Bearer <api-kulcs>`          |
-| `Content-Type`  | `application/json`            |
-| `Accept`        | `application/json`            |
+| Fejléc          | Érték                |
+| --------------- | -------------------- |
+| `Authorization` | `Bearer <api-kulcs>` |
+| `Content-Type`  | `application/json`   |
+| `Accept`        | `application/json`   |
 
 #### Kérés törzs
 
-| Mező     | Típus    | Kötelező | Megkötés          |
-| -------- | -------- | -------- | ----------------- |
+| Mező     | Típus    | Kötelező | Megkötés            |
+| -------- | -------- | -------- | ------------------- |
 | `prompt` | `string` | igen     | max. 20000 karakter |
 
 ```json
 {
-  "prompt": "Foglald össze egy mondatban, mi az a Laravel."
+    "prompt": "Foglald össze egy mondatban, mi az a Laravel."
 }
 ```
 
@@ -58,67 +58,67 @@ Elküld egy promptot a kulcshoz tartozó agentnek, és visszaadja a Claude vála
 
 ```json
 {
-  "success": true,
-  "result": "A Laravel egy PHP keretrendszer webalkalmazások fejlesztéséhez.",
-  "error": null,
-  "agent_session": {
-    "id": 12,
-    "agent_id": 3,
-    "workspace_id": 1,
-    "session_id": "b1d2c3e4-...",
-    "last_used_at": "2026-11-19T10:00:00.000000Z",
-    "created_at": "2026-11-18T09:00:00.000000Z",
-    "updated_at": "2026-11-19T10:00:00.000000Z"
-  },
-  "raw": { "...": "a claude CLI nyers JSON kimenete" }
+    "success": true,
+    "result": "A Laravel egy PHP keretrendszer webalkalmazások fejlesztéséhez.",
+    "error": null,
+    "agent_session": {
+        "id": 12,
+        "agent_id": 3,
+        "workspace_id": 1,
+        "session_id": "b1d2c3e4-...",
+        "last_used_at": "2026-11-19T10:00:00.000000Z",
+        "created_at": "2026-11-18T09:00:00.000000Z",
+        "updated_at": "2026-11-19T10:00:00.000000Z"
+    },
+    "raw": { "...": "a claude CLI nyers JSON kimenete" }
 }
 ```
 
-| Mező            | Típus              | Leírás                                                              |
-| --------------- | ------------------ | ------------------------------------------------------------------ |
-| `success`       | `bool`             | A futás sikeres volt-e.                                             |
-| `result`        | `string \| null`   | Az agent válasza.                                                   |
-| `error`         | `string \| null`   | Hibaüzenet, ha volt hiba (`success: false` esetén).                 |
-| `agent_session` | `object`           | A kulcshoz tartozó beszélgetés (session) tárolt adatai (lásd lent).  |
-| `raw`           | `mixed`            | A `claude` CLI teljes, nyers JSON kimenete.                         |
+| Mező            | Típus            | Leírás                                                              |
+| --------------- | ---------------- | ------------------------------------------------------------------- |
+| `success`       | `bool`           | A futás sikeres volt-e.                                             |
+| `result`        | `string \| null` | Az agent válasza.                                                   |
+| `error`         | `string \| null` | Hibaüzenet, ha volt hiba (`success: false` esetén).                 |
+| `agent_session` | `object`         | A kulcshoz tartozó beszélgetés (session) tárolt adatai (lásd lent). |
+| `raw`           | `mixed`          | A `claude` CLI teljes, nyers JSON kimenete.                         |
 
 #### `agent_session` mezői
 
-| Mező           | Típus              | Leírás                                                                 |
-| -------------- | ------------------ | --------------------------------------------------------------------- |
-| `id`           | `int`              | A session azonosítója az adatbázisban.                                 |
-| `agent_id`     | `int`              | A sessionhöz tartozó agent azonosítója.                               |
-| `workspace_id` | `int \| null`      | A sessionhöz tartozó munkaterület azonosítója (ha van).               |
-| `session_id`   | `string \| null`   | A `claude` CLI beszélgetés azonosítója. A szerver automatikusan tárolja. |
-| `last_used_at` | `string \| null`   | Mikor használták utoljára a sessiont (ISO 8601).                       |
-| `created_at`   | `string \| null`   | Létrehozás ideje (ISO 8601).                                           |
-| `updated_at`   | `string \| null`   | Utolsó módosítás ideje (ISO 8601).                                     |
+| Mező           | Típus            | Leírás                                                                   |
+| -------------- | ---------------- | ------------------------------------------------------------------------ |
+| `id`           | `int`            | A session azonosítója az adatbázisban.                                   |
+| `agent_id`     | `int`            | A sessionhöz tartozó agent azonosítója.                                  |
+| `workspace_id` | `int \| null`    | A sessionhöz tartozó munkaterület azonosítója (ha van).                  |
+| `session_id`   | `string \| null` | A `claude` CLI beszélgetés azonosítója. A szerver automatikusan tárolja. |
+| `last_used_at` | `string \| null` | Mikor használták utoljára a sessiont (ISO 8601).                         |
+| `created_at`   | `string \| null` | Létrehozás ideje (ISO 8601).                                             |
+| `updated_at`   | `string \| null` | Utolsó módosítás ideje (ISO 8601).                                       |
 
 #### Hibás válaszok
 
-| HTTP kód | Mikor                                                  | Törzs                                                        |
-| -------- | ------------------------------------------------------ | ------------------------------------------------------------ |
-| `401`    | Hiányzó vagy érvénytelen API kulcs.                    | `{ "message": "Invalid or missing API key." }`               |
-| `422`    | Validációs hiba (pl. hiányzó/túl hosszú `prompt`).     | `{ "message": "...", "errors": { "prompt": ["..."] } }`      |
-| `502`    | A `claude` CLI hibát adott vagy nem válaszolt.         | A sikeres válasz sémája, de `success: false` és kitöltött `error`. |
+| HTTP kód | Mikor                                              | Törzs                                                              |
+| -------- | -------------------------------------------------- | ------------------------------------------------------------------ |
+| `401`    | Hiányzó vagy érvénytelen API kulcs.                | `{ "message": "Invalid or missing API key." }`                     |
+| `422`    | Validációs hiba (pl. hiányzó/túl hosszú `prompt`). | `{ "message": "...", "errors": { "prompt": ["..."] } }`            |
+| `502`    | A `claude` CLI hibát adott vagy nem válaszolt.     | A sikeres válasz sémája, de `success: false` és kitöltött `error`. |
 
 Példa `502`-re:
 
 ```json
 {
-  "success": false,
-  "result": null,
-  "error": "The claude command exited with an error.",
-  "agent_session": {
-    "id": 12,
-    "agent_id": 3,
-    "workspace_id": 1,
-    "session_id": null,
-    "last_used_at": null,
-    "created_at": "2026-11-18T09:00:00.000000Z",
-    "updated_at": "2026-11-18T09:00:00.000000Z"
-  },
-  "raw": null
+    "success": false,
+    "result": null,
+    "error": "The claude command exited with an error.",
+    "agent_session": {
+        "id": 12,
+        "agent_id": 3,
+        "workspace_id": 1,
+        "session_id": null,
+        "last_used_at": null,
+        "created_at": "2026-11-18T09:00:00.000000Z",
+        "updated_at": "2026-11-18T09:00:00.000000Z"
+    },
+    "raw": null
 }
 ```
 
@@ -147,14 +147,14 @@ curl -X POST https://pelda.hu/api/prompt \
 ### JavaScript (fetch)
 
 ```js
-const res = await fetch("https://pelda.hu/api/prompt", {
-  method: "POST",
-  headers: {
-    Authorization: "Bearer cc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
-  body: JSON.stringify({ prompt: "Szia, ki vagy?" }),
+const res = await fetch('https://pelda.hu/api/prompt', {
+    method: 'POST',
+    headers: {
+        Authorization: 'Bearer cc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+    },
+    body: JSON.stringify({ prompt: 'Szia, ki vagy?' }),
 });
 
 const data = await res.json();

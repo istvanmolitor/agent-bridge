@@ -21,6 +21,7 @@ class AgentRequest extends FormRequest
             'system_prompt' => ['required', 'string', 'max:20000'],
             'prompt_mode' => ['required', Rule::in(['append', 'override'])],
             'model' => ['nullable', 'string', 'max:255'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
         ];
     }
 }

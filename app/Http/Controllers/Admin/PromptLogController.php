@@ -89,7 +89,7 @@ class PromptLogController extends Controller
                 ->get(['id', 'name']),
             'agents' => Agent::query()
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'avatar_path']),
             'workspaces' => Workspace::query()
                 ->orderBy('name')
                 ->get(['id', 'name']),

@@ -4,6 +4,8 @@ use App\Models\Agent;
 use App\Models\AgentSession;
 use App\Models\ApiKey;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('the agents page lists only the current user\'s agents', function () {
@@ -39,6 +41,91 @@ test('an admin can create an agent', function () {
     expect($agent->name)->toBe('Költő')
         ->and($agent->prompt_mode)->toBe('override')
         ->and($agent->system_prompt)->toBe('Te egy költő vagy.');
+});
+
+test('an admin can upload an avatar when creating an agent', function () {
+    Storage::fake('public');
+
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)
+        ->from(route('admin.agents.index'))
+        ->post(route('admin.agents.store'), [
+            'name' => 'Arcos',
+            'system_prompt' => 'Van arcképe.',
+            'prompt_mode' => 'append',
+            'avatar' => UploadedFile::fake()->image('face.png'),
+        ])
+        ->assertRedirect(route('admin.agents.index'));
+
+    $agent = $admin->agents()->sole();
+    expect($agent->avatar_path)->not->toBeNull()
+        ->and($agent->avatar_url)->toContain($agent->avatar_path);
+    Storage::disk('public')->assertExists($agent->avatar_path);
+});
+
+test('uploading a new avatar replaces and removes the old file', function () {
+    Storage::fake('public');
+
+    $admin = User::factory()->create(['is_admin' => true]);
+    $agent = Agent::factory()->for($admin)->create();
+
+    $this->actingAs($admin)->put(route('admin.agents.update', $agent), [
+        'name' => $agent->name,
+        'system_prompt' => $agent->system_prompt,
+        'prompt_mode' => $agent->prompt_mode,
+        'avatar' => UploadedFile::fake()->image('first.png'),
+    ])->assertRedirect(route('admin.agents.index'));
+
+    $first = $agent->refresh()->avatar_path;
+
+    $this->actingAs($admin)->put(route('admin.agents.update', $agent), [
+        'name' => $agent->name,
+        'system_prompt' => $agent->system_prompt,
+        'prompt_mode' => $agent->prompt_mode,
+        'avatar' => UploadedFile::fake()->image('second.png'),
+    ])->assertRedirect(route('admin.agents.index'));
+
+    $second = $agent->refresh()->avatar_path;
+
+    expect($second)->not->toBe($first);
+    Storage::disk('public')->assertMissing($first);
+    Storage::disk('public')->assertExists($second);
+});
+
+test('deleting an agent removes its avatar file', function () {
+    Storage::fake('public');
+
+    $admin = User::factory()->create(['is_admin' => true]);
+    $agent = Agent::factory()->for($admin)->create();
+
+    $this->actingAs($admin)->put(route('admin.agents.update', $agent), [
+        'name' => $agent->name,
+        'system_prompt' => $agent->system_prompt,
+        'prompt_mode' => $agent->prompt_mode,
+        'avatar' => UploadedFile::fake()->image('face.png'),
+    ]);
+
+    $path = $agent->refresh()->avatar_path;
+    Storage::disk('public')->assertExists($path);
+
+    $this->actingAs($admin)->delete(route('admin.agents.destroy', $agent));
+
+    Storage::disk('public')->assertMissing($path);
+});
+
+test('the avatar must be a valid image within the size limit', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)
+        ->from(route('admin.agents.index'))
+        ->post(route('admin.agents.store'), [
+            'name' => 'Rossz',
+            'system_prompt' => 'x',
+            'prompt_mode' => 'append',
+            'avatar' => UploadedFile::fake()->create('doc.pdf', 10, 'application/pdf'),
+        ])
+        ->assertSessionHasErrors('avatar');
 });
 
 test('creating an agent requires a name, system prompt and valid prompt mode', function () {

@@ -15,6 +15,11 @@ class LogNode extends BaseNode
      */
     public function execute(array $parameters): array
     {
+        // Showing the received parameters is the node's whole purpose: record
+        // them on the node so the canvas displays what reached it (an upstream
+        // agent's response included), surviving a page reload.
+        $this->node->storeOutput($this->format($parameters));
+
         // Writing to the log file is opt-out: it happens unless the checkbox
         // was explicitly cleared.
         if ($this->node->settings['to_file'] ?? true) {
@@ -27,6 +32,20 @@ class LogNode extends BaseNode
         }
 
         return $parameters;
+    }
+
+    /**
+     * Render the received parameters as readable, pretty-printed JSON for the
+     * canvas. Falls back to an empty object when nothing arrived.
+     *
+     * @param  array<string, mixed>  $parameters
+     */
+    private function format(array $parameters): string
+    {
+        return json_encode(
+            $parameters,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        ) ?: '{}';
     }
 
     /**

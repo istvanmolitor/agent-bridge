@@ -22,7 +22,7 @@ class ChatController extends Controller
     public function index(Request $request): Response
     {
         $sessions = $request->user()->agentSessions()
-            ->with(['agent:id,name', 'workspace:id,name'])
+            ->with(['agent:id,name,avatar_path', 'workspace:id,name'])
             ->orderByRaw('COALESCE(last_used_at, created_at) DESC')
             ->latest('id')
             ->get(['id', 'agent_id', 'workspace_id', 'session_id', 'last_used_at', 'created_at'])
@@ -49,7 +49,7 @@ class ChatController extends Controller
 
         return Inertia::render('admin/Chat', [
             'sessions' => $sessions,
-            'agents' => $request->user()->agents()->orderBy('name')->get(['id', 'name']),
+            'agents' => $request->user()->agents()->orderBy('name')->get(['id', 'name', 'avatar_path']),
             'workspaces' => $request->user()->workspaces()->orderBy('name')->get(['id', 'name']),
             'logs' => $logs,
             'selectedSessionId' => $sessionId ? (string) $sessionId : null,

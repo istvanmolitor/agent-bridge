@@ -80,6 +80,24 @@ test('the log node writes the parameters it received to the log file and forward
         ->withArgs(fn (string $message, array $context): bool => $context['parameters'] === ['prompt' => 'Hi', 'response' => 'Yo']);
 });
 
+test('the log node records the received parameters on the node so the canvas shows them', function () {
+    $node = WorkflowNode::factory()->create(['type' => 'log', 'settings' => null]);
+
+    $node->resolveType()->execute(['prompt' => 'Hi', 'response' => 'Yo']);
+
+    $output = $node->fresh()->output;
+    expect($output)->toBeString()
+        ->and(json_decode($output, true))->toBe(['prompt' => 'Hi', 'response' => 'Yo']);
+});
+
+test('the log node records its output even when the log file is off', function () {
+    $node = WorkflowNode::factory()->create(['type' => 'log', 'settings' => ['to_file' => false]]);
+
+    $node->resolveType()->execute(['response' => 'Visible']);
+
+    expect(json_decode((string) $node->fresh()->output, true))->toBe(['response' => 'Visible']);
+});
+
 test('the log node skips the log file when the to_file setting is off', function () {
     Log::spy();
     $node = WorkflowNode::factory()->create(['type' => 'log', 'settings' => ['to_file' => false]]);

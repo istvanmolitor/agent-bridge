@@ -15,15 +15,16 @@ const props = withDefaults(defineProps<Props>(), {
 
 const { getInitials } = useInitials();
 
-// Compute whether we should show the avatar image
-const showAvatar = computed(
-    () => props.user.avatar && props.user.avatar !== '',
+// Prefer the uploaded avatar URL, falling back to any legacy avatar field.
+const avatarSrc = computed(
+    () => props.user.avatar_url || props.user.avatar || '',
 );
+const showAvatar = computed(() => avatarSrc.value !== '');
 </script>
 
 <template>
     <Avatar class="h-8 w-8 overflow-hidden rounded-sm">
-        <AvatarImage v-if="showAvatar" :src="user.avatar!" :alt="user.name" />
+        <AvatarImage v-if="showAvatar" :src="avatarSrc" :alt="user.name" />
         <AvatarFallback class="rounded-sm bg-surface-300 text-ink">
             {{ getInitials(user.name) }}
         </AvatarFallback>

@@ -89,7 +89,7 @@ class WorkflowController extends Controller
             // Agents the owner can run on an agent node.
             'agents' => Agent::where('user_id', $workflow->user_id)
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'avatar_path']),
             // Workspaces the owner can run an agent node in.
             'workspaces' => Workspace::where('user_id', $workflow->user_id)
                 ->orderBy('name')
@@ -100,7 +100,7 @@ class WorkflowController extends Controller
             'nodes' => Inertia::live(
                 fn () => $workflow->nodes()
                     ->orderBy('id')
-                    ->get(['id', 'type', 'name', 'description', 'status', 'error', 'settings', 'position_x', 'position_y']),
+                    ->get(['id', 'type', 'name', 'description', 'status', 'error', 'settings', 'output', 'position_x', 'position_y']),
                 on: WorkflowNodeStatusChanged::class,
                 channel: new PrivateChannel('workflows.'.$workflow->id),
             ),

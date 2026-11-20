@@ -2,6 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import { ref, watch } from 'vue';
+import AgentSelect from '@/components/AgentSelect.vue';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -173,21 +174,14 @@ function formatDate(value: string | null): string {
                 </SelectContent>
             </Select>
 
-            <Select v-model="agentId">
-                <SelectTrigger class="sm:w-48">
-                    <SelectValue placeholder="Összes ügynök" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem :value="ALL">Összes ügynök</SelectItem>
-                    <SelectItem
-                        v-for="agent in agents"
-                        :key="agent.id"
-                        :value="String(agent.id)"
-                    >
-                        {{ agent.name }}
-                    </SelectItem>
-                </SelectContent>
-            </Select>
+            <AgentSelect
+                v-model="agentId"
+                :agents="agents"
+                include-all
+                :all-value="ALL"
+                all-label="Összes ügynök"
+                trigger-class="sm:w-48"
+            />
 
             <Select v-model="apiKeyId">
                 <SelectTrigger class="sm:w-48">

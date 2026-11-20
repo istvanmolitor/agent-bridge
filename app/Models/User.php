@@ -5,15 +5,18 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
  * @property string $name
+ * @property string|null $avatar_path
  * @property string $email
  * @property Carbon|null $email_verified_at
  * @property string $password
@@ -24,13 +27,33 @@ use Illuminate\Support\Carbon;
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read string|null $avatar_url
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'avatar_path', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * @var list<string>
+     */
+    protected $appends = ['avatar_url'];
+
+    /**
+     * Public URL of the uploaded avatar, if any.
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(
+            fn (): ?string => $this->avatar_path !== null
+                ? Storage::disk('public')->url($this->avatar_path)
+                : null,
+        );
+    }
 
     /**
      * Get the attributes that should be cast.

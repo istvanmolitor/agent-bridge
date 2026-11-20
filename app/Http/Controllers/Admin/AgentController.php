@@ -8,6 +8,7 @@ use App\Models\Agent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,7 +23,7 @@ class AgentController extends Controller
             'agents' => $request->user()->agents()
                 ->withCount('apiKeys')
                 ->latest()
-                ->get(['id', 'name', 'description', 'system_prompt', 'prompt_mode', 'model', 'created_at']),
+                ->get(['id', 'name', 'description', 'avatar_path', 'system_prompt', 'prompt_mode', 'model', 'created_at']),
         ]);
     }
 
@@ -31,7 +32,11 @@ class AgentController extends Controller
      */
     public function store(AgentRequest $request): RedirectResponse
     {
-        $request->user()->agents()->create($request->validated());
+        $agent = $request->user()->agents()->create($request->validated());
+
+        if ($request->hasFile('avatar')) {
+            $agent->update(['avatar_path' => $this->storeAvatar($request)]);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Agent created.')]);
 
@@ -45,7 +50,14 @@ class AgentController extends Controller
     {
         Gate::authorize('update', $agent);
 
-        $agent->update($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('avatar')) {
+            $this->deleteAvatar($agent);
+            $data['avatar_path'] = $this->storeAvatar($request);
+        }
+
+        $agent->update($data);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Agent updated.')]);
 
@@ -59,10 +71,34 @@ class AgentController extends Controller
     {
         Gate::authorize('delete', $agent);
 
+        $this->deleteAvatar($agent);
+
         $agent->delete();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Agent deleted.')]);
 
         return to_route('admin.agents.index');
+    }
+
+    /**
+     * Store the uploaded avatar on the public disk and return its path.
+     */
+    private function storeAvatar(AgentRequest $request): string
+    {
+        $path = $request->file('avatar')->store('agent-avatars', 'public');
+
+        abort_if($path === false, 500, 'Az arckép feltöltése nem sikerült.');
+
+        return $path;
+    }
+
+    /**
+     * Remove the agent's current avatar file, if any.
+     */
+    private function deleteAvatar(Agent $agent): void
+    {
+        if ($agent->avatar_path !== null) {
+            Storage::disk('public')->delete($agent->avatar_path);
+        }
     }
 }

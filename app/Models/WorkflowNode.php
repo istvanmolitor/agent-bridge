@@ -22,12 +22,13 @@ use Illuminate\Support\Carbon;
  * @property string $status
  * @property string|null $error
  * @property array<string, mixed> $settings
+ * @property string|null $output
  * @property float $position_x
  * @property float $position_y
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['type', 'name', 'description', 'status', 'settings', 'position_x', 'position_y'])]
+#[Fillable(['type', 'name', 'description', 'status', 'settings', 'output', 'position_x', 'position_y'])]
 class WorkflowNode extends Model
 {
     /** @use HasFactory<WorkflowNodeFactory> */
@@ -51,6 +52,22 @@ class WorkflowNode extends Model
         $this->forceFill(['status' => $status, 'error' => $error])->save();
 
         WorkflowNodeStatusChanged::dispatch($this->workflow_id, $this->id, $status);
+    }
+
+    /**
+     * Persist the node's run output and broadcast a status change so the live
+     * `nodes` prop re-fetches and the canvas shows the new output. The status is
+     * left untouched; this only records what the last run produced.
+     */
+    public function storeOutput(?string $output): void
+    {
+        $this->forceFill(['output' => $output])->save();
+
+        WorkflowNodeStatusChanged::dispatch(
+            $this->workflow_id,
+            $this->id,
+            $this->status ?? self::STATUS_IDLE,
+        );
     }
 
     /**

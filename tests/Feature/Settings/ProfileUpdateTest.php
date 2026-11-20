@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -31,6 +33,65 @@ test('profile information can be updated', function () {
     expect($user->name)->toBe('Test User');
     expect($user->email)->toBe('test@example.com');
     expect($user->email_verified_at)->toBeNull();
+});
+
+test('a user can upload an avatar on their profile', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+
+    $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => UploadedFile::fake()->image('face.png'),
+        ])
+        ->assertSessionHasNoErrors();
+
+    $user->refresh();
+
+    expect($user->avatar_path)->not->toBeNull()
+        ->and($user->avatar_url)->toContain($user->avatar_path);
+    Storage::disk('public')->assertExists($user->avatar_path);
+});
+
+test('uploading a new profile avatar replaces the old file', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->patch(route('profile.update'), [
+        'name' => $user->name,
+        'email' => $user->email,
+        'avatar' => UploadedFile::fake()->image('first.png'),
+    ]);
+    $first = $user->refresh()->avatar_path;
+
+    $this->actingAs($user)->patch(route('profile.update'), [
+        'name' => $user->name,
+        'email' => $user->email,
+        'avatar' => UploadedFile::fake()->image('second.png'),
+    ]);
+    $second = $user->refresh()->avatar_path;
+
+    expect($second)->not->toBe($first);
+    Storage::disk('public')->assertMissing($first);
+    Storage::disk('public')->assertExists($second);
+});
+
+test('the profile avatar must be a valid image within the size limit', function () {
+    $user = User::factory()->create();
+
+    $this
+        ->actingAs($user)
+        ->from(route('profile.edit'))
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => UploadedFile::fake()->create('doc.pdf', 10, 'application/pdf'),
+        ])
+        ->assertSessionHasErrors('avatar');
 });
 
 test('email is stored in lowercase so the user can still log in', function () {

@@ -17,17 +17,20 @@ import {
     Bot,
     Check,
     CircleAlert,
+    FolderGit2,
     LoaderCircle,
     MessageSquare,
     Pencil,
     Play,
     Plus,
+    ScrollText,
     Trash2,
     Unlink,
     X,
 } from '@lucide/vue';
 import { useEcho } from '@laravel/echo-vue';
 import { computed, ref, watch } from 'vue';
+import AgentSelect from '@/components/AgentSelect.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -91,6 +94,7 @@ type NodeData = {
     status: string;
     error: string | null;
     settings: NodeSettings;
+    output: string | null;
     position_x: number;
     position_y: number;
 };
@@ -101,7 +105,7 @@ type ConnectionData = {
     target_node_id: number;
 };
 
-type SelectOption = { id: number; name: string };
+type SelectOption = { id: number; name: string; avatar_url?: string | null };
 
 const props = defineProps<{
     workflow: { id: number; name: string; description: string | null };
@@ -119,6 +123,18 @@ const promptMap = computed<Record<number, string>>(() =>
 
 const agentMap = computed<Record<number, string>>(() =>
     Object.fromEntries(props.agents.map((agent) => [agent.id, agent.name])),
+);
+
+const agentAvatarMap = computed<Record<number, string | null>>(() =>
+    Object.fromEntries(
+        props.agents.map((agent) => [agent.id, agent.avatar_url ?? null]),
+    ),
+);
+
+const workspaceMap = computed<Record<number, string>>(() =>
+    Object.fromEntries(
+        props.workspaces.map((workspace) => [workspace.id, workspace.name]),
+    ),
 );
 
 const typeMap = computed<Record<string, NodeType>>(() =>
@@ -150,8 +166,11 @@ type FlowNode = {
         description: string | null;
         status: string;
         error: string | null;
+        output: string | null;
         promptLabel: string | null;
         agentLabel: string | null;
+        agentAvatar: string | null;
+        workspaceLabel: string | null;
     };
 };
 
@@ -175,6 +194,20 @@ function agentLabelFor(node: NodeData): string | null {
     const agentId = node.settings?.agent_id;
 
     return agentId != null ? (agentMap.value[agentId] ?? null) : null;
+}
+
+function agentAvatarFor(node: NodeData): string | null {
+    const agentId = node.settings?.agent_id;
+
+    return agentId != null ? (agentAvatarMap.value[agentId] ?? null) : null;
+}
+
+function workspaceLabelFor(node: NodeData): string | null {
+    const workspaceId = node.settings?.workspace_id;
+
+    return workspaceId != null
+        ? (workspaceMap.value[workspaceId] ?? null)
+        : null;
 }
 
 // Nodes whose run finished so fast (the immediate, non-queued ones) the server
@@ -202,8 +235,11 @@ function nodeData(node: NodeData): FlowNode['data'] {
         description: node.description,
         status,
         error: node.error,
+        output: node.output,
         promptLabel: promptLabelFor(node),
         agentLabel: agentLabelFor(node),
+        agentAvatar: agentAvatarFor(node),
+        workspaceLabel: workspaceLabelFor(node),
     };
 }
 
@@ -692,15 +728,41 @@ function confirmDelete(): void {
                                     'Nincs prompt kiválasztva'
                                 }}
                             </p>
-                            <p
+                            <div
                                 v-if="data.nodeType === 'agent'"
+                                class="workflow-node__agent"
+                            >
+                                <img
+                                    v-if="data.agentAvatar"
+                                    :src="data.agentAvatar"
+                                    :alt="data.agentLabel ?? ''"
+                                    class="size-16 shrink-0 rounded-full object-cover"
+                                />
+                                <Bot v-else class="size-16" />
+                                <span class="workflow-node__agent-name">
+                                    {{
+                                        data.agentLabel ??
+                                        'Nincs ügynök kiválasztva'
+                                    }}
+                                </span>
+                                <span
+                                    v-if="data.workspaceLabel"
+                                    class="workflow-node__agent-workspace"
+                                >
+                                    <FolderGit2 class="size-3" />
+                                    {{ data.workspaceLabel }}
+                                </span>
+                            </div>
+                            <pre
+                                v-if="data.nodeType === 'log' && data.output"
+                                class="nodrag workflow-node__output"
+                                >{{ data.output }}</pre>
+                            <p
+                                v-else-if="data.nodeType === 'log'"
                                 class="workflow-node__setting"
                             >
-                                <Bot class="size-3" />
-                                {{
-                                    data.agentLabel ??
-                                    'Nincs ügynök kiválasztva'
-                                }}
+                                <ScrollText class="size-3" />
+                                Még nincs kimenet
                             </p>
                             <p
                                 v-if="data.status === 'failed' && data.error"
@@ -787,22 +849,13 @@ function confirmDelete(): void {
                 <template v-if="editingIsAgent">
                     <div class="grid gap-2">
                         <Label for="edit-node-agent">Ügynök</Label>
-                        <Select v-model="editForm.agent_id">
-                            <SelectTrigger id="edit-node-agent">
-                                <SelectValue
-                                    placeholder="Válassz egy ügynököt"
-                                />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem
-                                    v-for="agent in agents"
-                                    :key="agent.id"
-                                    :value="String(agent.id)"
-                                >
-                                    {{ agent.name }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <AgentSelect
+                            v-model="editForm.agent_id"
+                            :agents="agents"
+                            trigger-id="edit-node-agent"
+                            trigger-class="w-full"
+                            placeholder="Válassz egy ügynököt"
+                        />
                         <p
                             v-if="agents.length === 0"
                             class="text-xs text-ink-muted"
@@ -1055,6 +1108,45 @@ function confirmDelete(): void {
     gap: 0.25rem;
     margin-top: 0.375rem;
     font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+}
+
+.workflow-node__output {
+    margin-top: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    max-height: 9rem;
+    overflow: auto;
+    border-radius: 0.375rem;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--color-ink);
+    background-color: var(--color-surface-100);
+    border: 1px solid var(--color-surface-300);
+}
+
+.workflow-node__agent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.workflow-node__agent-name {
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+}
+
+.workflow-node__agent-workspace {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.625rem;
     color: var(--color-ink-muted);
 }
 

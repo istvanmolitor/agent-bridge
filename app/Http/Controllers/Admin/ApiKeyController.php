@@ -20,7 +20,7 @@ class ApiKeyController extends Controller
     {
         return Inertia::render('admin/ApiKeys', [
             'apiKeys' => $request->user()->apiKeys()
-                ->with(['agentSession.agent:id,name', 'agentSession.workspace:id,name'])
+                ->with(['agentSession.agent:id,name,avatar_path', 'agentSession.workspace:id,name'])
                 ->latest()
                 ->get(['id', 'agent_session_id', 'name', 'token', 'last_used_at', 'created_at'])
                 ->map(fn (ApiKey $apiKey) => [
@@ -34,7 +34,7 @@ class ApiKeyController extends Controller
                 ]),
             'agents' => $request->user()->agents()
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'avatar_path']),
             'workspaces' => $request->user()->workspaces()
                 ->orderBy('name')
                 ->get(['id', 'name']),

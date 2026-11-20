@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useHttp } from '@inertiajs/vue3';
+import { Head, router, useHttp, usePage } from '@inertiajs/vue3';
 import {
     ChevronDown,
     ChevronRight,
@@ -11,10 +11,12 @@ import {
     X,
 } from '@lucide/vue';
 import { computed, nextTick, ref, watch, type Ref } from 'vue';
+import AgentSelect from '@/components/AgentSelect.vue';
 import FileTree from '@/components/FileTree.vue';
 import FileViewer from '@/components/FileViewer.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -37,7 +39,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { index, run } from '@/routes/admin/chat';
 import { store as storeSession } from '@/routes/admin/chat/sessions';
 
-type Agent = { id: number; name: string };
+type Agent = { id: number; name: string; avatar_url?: string | null };
 type Workspace = { id: number; name: string };
 
 type Session = {
@@ -96,6 +98,20 @@ const selectedSession = computed(
 );
 
 const workspace = computed(() => selectedSession.value?.workspace ?? null);
+
+const selectedAgent = computed(() => selectedSession.value?.agent ?? null);
+
+const page = usePage();
+const currentUser = computed(() => page.props.auth.user);
+
+function initials(name: string): string {
+    return name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase() ?? '')
+        .join('');
+}
 
 function selectSession(session: Session) {
     http.agent_session_id = String(session.id);
@@ -294,26 +310,42 @@ function formatDate(value: string | null): string {
                     v-for="session in sessions"
                     :key="session.id"
                     type="button"
-                    class="flex w-full flex-col items-start gap-1 border-b border-border px-3 py-2.5 text-left text-sm transition-colors duration-[120ms] ease-out hover:bg-surface-200"
+                    class="flex w-full items-start gap-2.5 border-b border-border px-3 py-2.5 text-left text-sm transition-colors duration-[120ms] ease-out hover:bg-surface-200"
                     :class="{
                         'bg-plasma-deep text-plasma shadow-[inset_2px_0_0_var(--plasma)]':
                             String(session.id) === http.agent_session_id,
                     }"
                     @click="selectSession(session)"
                 >
-                    <span class="font-medium">{{ sessionTitle(session) }}</span>
-                    <span
-                        class="nova-code flex items-center gap-1.5 text-ink-muted"
-                    >
-                        <Folder class="h-3 w-3 shrink-0" />
-                        {{ session.workspace?.name ?? '—' }}
-                    </span>
-                    <span class="nova-code text-ink-faint">
-                        {{
-                            formatDate(
-                                session.last_used_at ?? session.created_at,
-                            )
-                        }}
+                    <Avatar class="mt-0.5 size-8 shrink-0">
+                        <AvatarImage
+                            v-if="session.agent?.avatar_url"
+                            :src="session.agent.avatar_url"
+                            :alt="session.agent.name"
+                        />
+                        <AvatarFallback
+                            class="bg-surface-300 text-xs font-medium text-ink-muted"
+                        >
+                            {{ initials(session.agent?.name ?? '?') }}
+                        </AvatarFallback>
+                    </Avatar>
+                    <span class="flex min-w-0 flex-col items-start gap-1">
+                        <span class="truncate font-medium">{{
+                            sessionTitle(session)
+                        }}</span>
+                        <span
+                            class="nova-code flex items-center gap-1.5 text-ink-muted"
+                        >
+                            <Folder class="h-3 w-3 shrink-0" />
+                            {{ session.workspace?.name ?? '—' }}
+                        </span>
+                        <span class="nova-code text-ink-faint">
+                            {{
+                                formatDate(
+                                    session.last_used_at ?? session.created_at,
+                                )
+                            }}
+                        </span>
                     </span>
                 </button>
             </div>
@@ -322,12 +354,26 @@ function formatDate(value: string | null): string {
         <!-- Chat area -->
         <section class="flex min-h-0 min-w-0 flex-1 flex-col gap-4 px-6 py-6">
             <div class="flex items-start justify-between gap-3">
-                <Heading
-                    variant="small"
-                    eyebrow="Munkamenet"
-                    title="Chat"
-                    description="Beszélgess a kiválasztott munkamenet ügynökével."
-                />
+                <div class="flex items-center gap-3">
+                    <Avatar v-if="selectedAgent" class="size-10 shrink-0">
+                        <AvatarImage
+                            v-if="selectedAgent.avatar_url"
+                            :src="selectedAgent.avatar_url"
+                            :alt="selectedAgent.name"
+                        />
+                        <AvatarFallback
+                            class="bg-surface-300 text-sm font-medium text-ink-muted"
+                        >
+                            {{ initials(selectedAgent.name) }}
+                        </AvatarFallback>
+                    </Avatar>
+                    <Heading
+                        variant="small"
+                        eyebrow="Munkamenet"
+                        :title="selectedAgent?.name ?? 'Chat'"
+                        description="Beszélgess a kiválasztott munkamenet ügynökével."
+                    />
+                </div>
 
                 <div v-if="selectedSession" class="flex items-center gap-2">
                     <Button
@@ -379,7 +425,7 @@ function formatDate(value: string | null): string {
 
                     <template v-for="log in logs" :key="log.id">
                         <!-- User prompt (collapsible) -->
-                        <div class="flex justify-end">
+                        <div class="flex items-start justify-end gap-2">
                             <div
                                 class="max-w-[85%] overflow-hidden rounded-md border border-plasma bg-plasma-deep text-ink"
                             >
@@ -413,10 +459,34 @@ function formatDate(value: string | null): string {
                                     {{ log.prompt }}
                                 </p>
                             </div>
+                            <Avatar class="mt-0.5 size-8 shrink-0">
+                                <AvatarImage
+                                    v-if="currentUser.avatar_url"
+                                    :src="currentUser.avatar_url"
+                                    :alt="currentUser.name"
+                                />
+                                <AvatarFallback
+                                    class="bg-surface-300 text-xs font-medium text-ink-muted"
+                                >
+                                    {{ initials(currentUser.name) }}
+                                </AvatarFallback>
+                            </Avatar>
                         </div>
 
                         <!-- Agent response (collapsible) -->
-                        <div class="flex justify-start">
+                        <div class="flex items-start justify-start gap-2">
+                            <Avatar class="mt-0.5 size-8 shrink-0">
+                                <AvatarImage
+                                    v-if="selectedAgent?.avatar_url"
+                                    :src="selectedAgent.avatar_url"
+                                    :alt="selectedAgent.name"
+                                />
+                                <AvatarFallback
+                                    class="bg-surface-300 text-xs font-medium text-ink-muted"
+                                >
+                                    {{ initials(selectedAgent?.name ?? '?') }}
+                                </AvatarFallback>
+                            </Avatar>
                             <div
                                 class="max-w-[85%] overflow-hidden rounded-md border border-border bg-surface-100"
                             >
@@ -522,20 +592,12 @@ function formatDate(value: string | null): string {
 
             <div class="grid gap-2">
                 <Label>Ügynök</Label>
-                <Select v-model="newAgentId">
-                    <SelectTrigger data-test="chat-create-agent">
-                        <SelectValue placeholder="Válassz ügynököt…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem
-                            v-for="agent in agents"
-                            :key="agent.id"
-                            :value="String(agent.id)"
-                        >
-                            {{ agent.name }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                <AgentSelect
+                    v-model="newAgentId"
+                    :agents="agents"
+                    trigger-class="w-full"
+                    data-test="chat-create-agent"
+                />
             </div>
 
             <div class="grid gap-2">

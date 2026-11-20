@@ -7,6 +7,7 @@ use App\Models\ApiKey;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 class AgentSeeder extends Seeder
 {
@@ -29,6 +30,7 @@ class AgentSeeder extends Seeder
                     .'képekben és hasonlatokban gazdagon.',
                 'prompt_mode' => 'override',
                 'model' => null,
+                'avatar' => 'kolto.jpg',
             ],
             [
                 'name' => 'Senior fejlesztő',
@@ -37,6 +39,7 @@ class AgentSeeder extends Seeder
                     .'válaszolj, konkrét kódpéldákkal és best practice ajánlásokkal.',
                 'prompt_mode' => 'append',
                 'model' => null,
+                'avatar' => 'senior-fejleszto.jpg',
             ],
             [
                 'name' => 'Ügyfélszolgálat',
@@ -45,10 +48,16 @@ class AgentSeeder extends Seeder
                     .'és empatikusan segíts a felhasználónak, kerüld a szakzsargont.',
                 'prompt_mode' => 'append',
                 'model' => null,
+                'avatar' => 'ugyfelszolgalat.jpg',
             ],
         ];
 
         foreach ($agents as $attributes) {
+            $avatarFile = $attributes['avatar'];
+            unset($attributes['avatar']);
+
+            $attributes['avatar_path'] = $this->seedAvatar($avatarFile);
+
             $agent = Agent::updateOrCreate(
                 ['user_id' => $user->id, 'name' => $attributes['name']],
                 $attributes,
@@ -73,5 +82,20 @@ class AgentSeeder extends Seeder
 
             $this->command?->info("API kulcs – {$attributes['name']}: {$token}");
         }
+    }
+
+    /**
+     * Copy a bundled avatar onto the public disk and return its stored path.
+     */
+    private function seedAvatar(string $file): string
+    {
+        $path = 'agent-avatars/'.$file;
+
+        Storage::disk('public')->put(
+            $path,
+            (string) file_get_contents(__DIR__.'/avatars/'.$file),
+        );
+
+        return $path;
     }
 }

@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import AgentController from '@/actions/App/Http/Controllers/Admin/AgentController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -32,12 +33,22 @@ type Agent = {
     id: number;
     name: string;
     description: string | null;
+    avatar_url: string | null;
     system_prompt: string;
     prompt_mode: 'append' | 'override';
     model: string | null;
     api_keys_count: number;
     created_at: string | null;
 };
+
+function initials(name: string): string {
+    return name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase() ?? '')
+        .join('');
+}
 
 defineProps<{
     agents: Agent[];
@@ -121,6 +132,20 @@ const editing = ref<Agent | null>(null);
                         </div>
 
                         <div class="grid gap-2">
+                            <Label for="create-avatar"
+                                >Arckép (opcionális)</Label
+                            >
+                            <input
+                                id="create-avatar"
+                                type="file"
+                                name="avatar"
+                                accept="image/*"
+                                class="block w-full text-sm text-ink-muted file:mr-3 file:rounded-md file:border-0 file:bg-surface-200 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink hover:file:bg-surface-300"
+                            />
+                            <InputError :message="errors.avatar" />
+                        </div>
+
+                        <div class="grid gap-2">
                             <Label for="create-system_prompt"
                                 >Személyiség (system prompt)</Label
                             >
@@ -188,235 +213,258 @@ const editing = ref<Agent | null>(null);
 
         <div
             v-else
-            class="overflow-hidden rounded-lg border border-border bg-surface-100 shadow-raised"
+            class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3"
         >
             <div
-                class="flex items-center justify-between border-b border-border bg-surface-200 px-5 py-3"
+                v-for="agent in agents"
+                :key="agent.id"
+                class="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface-100 shadow-raised transition-colors duration-[120ms] ease-out hover:border-border-strong"
             >
-                <span class="nova-label">Nyilvántartás</span>
-                <span class="nova-label text-ink-muted"
-                    >{{ agents.length }} ügynök</span
-                >
-            </div>
-
-            <div class="divide-y divide-border">
-                <div
-                    v-for="agent in agents"
-                    :key="agent.id"
-                    class="flex items-start justify-between gap-4 p-5 transition-colors duration-[120ms] ease-out hover:bg-surface-200"
-                >
-                    <div class="min-w-0 space-y-1.5">
-                        <p class="font-medium text-ink">{{ agent.name }}</p>
-                        <p
-                            v-if="agent.description"
-                            class="text-sm text-ink-muted"
-                        >
-                            {{ agent.description }}
-                        </p>
-                        <p class="nova-code text-ink-faint">
-                            {{ promptModeLabels[agent.prompt_mode] }}
-                            <template v-if="agent.model">
-                                · {{ agent.model }}</template
+                <div class="flex flex-1 flex-col gap-1.5 p-5">
+                    <div class="flex items-center gap-3">
+                        <Avatar class="size-14 shrink-0 rounded-lg">
+                            <AvatarImage
+                                v-if="agent.avatar_url"
+                                :src="agent.avatar_url"
+                                :alt="agent.name"
+                            />
+                            <AvatarFallback
+                                class="rounded-lg bg-surface-200 text-lg font-medium text-ink-muted"
                             >
-                            · {{ agent.api_keys_count }} API kulcs
+                                {{ initials(agent.name) }}
+                            </AvatarFallback>
+                        </Avatar>
+                        <p class="min-w-0 text-base font-medium text-ink">
+                            {{ agent.name }}
                         </p>
                     </div>
-
-                    <div class="flex shrink-0 gap-2">
-                        <Dialog
-                            :open="editing?.id === agent.id"
-                            @update:open="
-                                (open) => (editing = open ? agent : null)
-                            "
+                    <p v-if="agent.description" class="text-sm text-ink-muted">
+                        {{ agent.description }}
+                    </p>
+                    <p class="nova-code mt-auto pt-2 text-ink-faint">
+                        {{ promptModeLabels[agent.prompt_mode] }}
+                        <template v-if="agent.model">
+                            · {{ agent.model }}</template
                         >
-                            <DialogTrigger as-child>
-                                <Button variant="secondary" size="sm">
-                                    <Pencil /> Szerkesztés</Button
-                                >
-                            </DialogTrigger>
-                            <DialogContent>
-                                <Form
-                                    v-bind="
-                                        AgentController.update.form(agent.id)
-                                    "
-                                    :options="{ preserveScroll: true }"
-                                    class="space-y-6"
-                                    v-slot="{ errors, processing }"
-                                    @success="editing = null"
-                                >
-                                    <DialogHeader class="space-y-3">
-                                        <DialogTitle
-                                            >Ügynök szerkesztése</DialogTitle
-                                        >
-                                        <DialogDescription>
-                                            A módosítás nem érinti a meglévő,
-                                            már futó munkameneteket.
-                                        </DialogDescription>
-                                    </DialogHeader>
+                    </p>
+                </div>
 
-                                    <div class="grid gap-2">
-                                        <Label :for="`edit-name-${agent.id}`"
-                                            >Név</Label
-                                        >
-                                        <Input
-                                            :id="`edit-name-${agent.id}`"
-                                            name="name"
-                                            :default-value="agent.name"
-                                            required
-                                        />
-                                        <InputError :message="errors.name" />
-                                    </div>
+                <div class="flex gap-2 border-t border-border p-4">
+                    <Dialog
+                        :open="editing?.id === agent.id"
+                        @update:open="(open) => (editing = open ? agent : null)"
+                    >
+                        <DialogTrigger as-child>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                class="flex-1"
+                            >
+                                <Pencil /> Szerkesztés</Button
+                            >
+                        </DialogTrigger>
+                        <DialogContent>
+                            <Form
+                                v-bind="AgentController.update.form(agent.id)"
+                                :options="{ preserveScroll: true }"
+                                class="space-y-6"
+                                v-slot="{ errors, processing }"
+                                @success="editing = null"
+                            >
+                                <DialogHeader class="space-y-3">
+                                    <DialogTitle
+                                        >Ügynök szerkesztése</DialogTitle
+                                    >
+                                    <DialogDescription>
+                                        A módosítás nem érinti a meglévő, már
+                                        futó munkameneteket.
+                                    </DialogDescription>
+                                </DialogHeader>
 
-                                    <div class="grid gap-2">
-                                        <Label
-                                            :for="`edit-description-${agent.id}`"
-                                            >Leírás</Label
-                                        >
-                                        <Input
-                                            :id="`edit-description-${agent.id}`"
-                                            name="description"
-                                            :default-value="
-                                                agent.description ?? ''
-                                            "
-                                        />
-                                        <InputError
-                                            :message="errors.description"
-                                        />
-                                    </div>
+                                <div class="grid gap-2">
+                                    <Label :for="`edit-name-${agent.id}`"
+                                        >Név</Label
+                                    >
+                                    <Input
+                                        :id="`edit-name-${agent.id}`"
+                                        name="name"
+                                        :default-value="agent.name"
+                                        required
+                                    />
+                                    <InputError :message="errors.name" />
+                                </div>
 
-                                    <div class="grid gap-2">
-                                        <Label
-                                            :for="`edit-system_prompt-${agent.id}`"
-                                            >Személyiség (system prompt)</Label
-                                        >
-                                        <Textarea
-                                            :id="`edit-system_prompt-${agent.id}`"
-                                            name="system_prompt"
-                                            rows="6"
-                                            :default-value="agent.system_prompt"
-                                            required
-                                        />
-                                        <InputError
-                                            :message="errors.system_prompt"
-                                        />
-                                    </div>
+                                <div class="grid gap-2">
+                                    <Label :for="`edit-description-${agent.id}`"
+                                        >Leírás</Label
+                                    >
+                                    <Input
+                                        :id="`edit-description-${agent.id}`"
+                                        name="description"
+                                        :default-value="agent.description ?? ''"
+                                    />
+                                    <InputError :message="errors.description" />
+                                </div>
 
-                                    <div class="grid gap-2">
-                                        <Label
-                                            :for="`edit-prompt_mode-${agent.id}`"
-                                            >Persona mód</Label
-                                        >
-                                        <Select
-                                            name="prompt_mode"
-                                            :default-value="agent.prompt_mode"
-                                        >
-                                            <SelectTrigger
-                                                :id="`edit-prompt_mode-${agent.id}`"
+                                <div class="grid gap-2">
+                                    <Label :for="`edit-avatar-${agent.id}`"
+                                        >Arckép</Label
+                                    >
+                                    <div class="flex items-center gap-3">
+                                        <Avatar class="size-11 shrink-0">
+                                            <AvatarImage
+                                                v-if="agent.avatar_url"
+                                                :src="agent.avatar_url"
+                                                :alt="agent.name"
+                                            />
+                                            <AvatarFallback
+                                                class="bg-surface-200 text-sm font-medium text-ink-muted"
                                             >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="append">{{
-                                                    promptModeLabels.append
-                                                }}</SelectItem>
-                                                <SelectItem value="override">{{
-                                                    promptModeLabels.override
-                                                }}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <InputError
-                                            :message="errors.prompt_mode"
+                                                {{ initials(agent.name) }}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <input
+                                            :id="`edit-avatar-${agent.id}`"
+                                            type="file"
+                                            name="avatar"
+                                            accept="image/*"
+                                            class="block w-full text-sm text-ink-muted file:mr-3 file:rounded-md file:border-0 file:bg-surface-200 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink hover:file:bg-surface-300"
                                         />
                                     </div>
+                                    <p class="text-xs text-ink-faint">
+                                        Új kép feltöltése lecseréli a
+                                        jelenlegit.
+                                    </p>
+                                    <InputError :message="errors.avatar" />
+                                </div>
 
-                                    <div class="grid gap-2">
-                                        <Label :for="`edit-model-${agent.id}`"
-                                            >Model (opcionális)</Label
+                                <div class="grid gap-2">
+                                    <Label
+                                        :for="`edit-system_prompt-${agent.id}`"
+                                        >Személyiség (system prompt)</Label
+                                    >
+                                    <Textarea
+                                        :id="`edit-system_prompt-${agent.id}`"
+                                        name="system_prompt"
+                                        rows="6"
+                                        :default-value="agent.system_prompt"
+                                        required
+                                    />
+                                    <InputError
+                                        :message="errors.system_prompt"
+                                    />
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label :for="`edit-prompt_mode-${agent.id}`"
+                                        >Persona mód</Label
+                                    >
+                                    <Select
+                                        name="prompt_mode"
+                                        :default-value="agent.prompt_mode"
+                                    >
+                                        <SelectTrigger
+                                            :id="`edit-prompt_mode-${agent.id}`"
                                         >
-                                        <Input
-                                            :id="`edit-model-${agent.id}`"
-                                            name="model"
-                                            :default-value="agent.model ?? ''"
-                                            placeholder="pl. claude-opus-4-8"
-                                        />
-                                        <InputError :message="errors.model" />
-                                    </div>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="append">{{
+                                                promptModeLabels.append
+                                            }}</SelectItem>
+                                            <SelectItem value="override">{{
+                                                promptModeLabels.override
+                                            }}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError :message="errors.prompt_mode" />
+                                </div>
 
-                                    <DialogFooter class="gap-2">
-                                        <DialogClose as-child>
-                                            <Button
-                                                variant="secondary"
-                                                type="button"
-                                            >
-                                                <X /> Mégse</Button
-                                            >
-                                        </DialogClose>
+                                <div class="grid gap-2">
+                                    <Label :for="`edit-model-${agent.id}`"
+                                        >Model (opcionális)</Label
+                                    >
+                                    <Input
+                                        :id="`edit-model-${agent.id}`"
+                                        name="model"
+                                        :default-value="agent.model ?? ''"
+                                        placeholder="pl. claude-opus-4-8"
+                                    />
+                                    <InputError :message="errors.model" />
+                                </div>
 
+                                <DialogFooter class="gap-2">
+                                    <DialogClose as-child>
                                         <Button
-                                            type="submit"
-                                            :disabled="processing"
+                                            variant="secondary"
+                                            type="button"
                                         >
-                                            <Check /> Mentés</Button
+                                            <X /> Mégse</Button
                                         >
-                                    </DialogFooter>
-                                </Form>
-                            </DialogContent>
-                        </Dialog>
+                                    </DialogClose>
 
-                        <Dialog>
-                            <DialogTrigger as-child>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    class="text-signal-alert hover:text-signal-alert"
-                                >
-                                    <Trash2 /> Törlés</Button
-                                >
-                            </DialogTrigger>
-                            <DialogContent>
-                                <Form
-                                    v-bind="
-                                        AgentController.destroy.form(agent.id)
-                                    "
-                                    :options="{ preserveScroll: true }"
-                                    class="space-y-6"
-                                    v-slot="{ processing }"
-                                >
-                                    <DialogHeader class="space-y-3">
-                                        <DialogTitle
-                                            >Törlöd a(z) "{{ agent.name }}"
-                                            ügynököt?</DialogTitle
-                                        >
-                                        <DialogDescription>
-                                            Az ügynökhöz tartozó API kulcsok és
-                                            munkamenetek is törlődnek. Ez nem
-                                            vonható vissza.
-                                        </DialogDescription>
-                                    </DialogHeader>
+                                    <Button
+                                        type="submit"
+                                        :disabled="processing"
+                                    >
+                                        <Check /> Mentés</Button
+                                    >
+                                </DialogFooter>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
 
-                                    <DialogFooter class="gap-2">
-                                        <DialogClose as-child>
-                                            <Button
-                                                variant="secondary"
-                                                type="button"
-                                            >
-                                                <X /> Mégse</Button
-                                            >
-                                        </DialogClose>
+                    <Dialog>
+                        <DialogTrigger as-child>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                class="text-signal-alert hover:text-signal-alert"
+                            >
+                                <Trash2 /> Törlés</Button
+                            >
+                        </DialogTrigger>
+                        <DialogContent>
+                            <Form
+                                v-bind="AgentController.destroy.form(agent.id)"
+                                :options="{ preserveScroll: true }"
+                                class="space-y-6"
+                                v-slot="{ processing }"
+                            >
+                                <DialogHeader class="space-y-3">
+                                    <DialogTitle
+                                        >Törlöd a(z) "{{ agent.name }}"
+                                        ügynököt?</DialogTitle
+                                    >
+                                    <DialogDescription>
+                                        Az ügynökhöz tartozó API kulcsok és
+                                        munkamenetek is törlődnek. Ez nem
+                                        vonható vissza.
+                                    </DialogDescription>
+                                </DialogHeader>
 
+                                <DialogFooter class="gap-2">
+                                    <DialogClose as-child>
                                         <Button
-                                            type="submit"
-                                            variant="destructive"
-                                            :disabled="processing"
+                                            variant="secondary"
+                                            type="button"
                                         >
-                                            <Trash2 />
-                                            Ügynök törlése
-                                        </Button>
-                                    </DialogFooter>
-                                </Form>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
+                                            <X /> Mégse</Button
+                                        >
+                                    </DialogClose>
+
+                                    <Button
+                                        type="submit"
+                                        variant="destructive"
+                                        :disabled="processing"
+                                    >
+                                        <Trash2 />
+                                        Ügynök törlése
+                                    </Button>
+                                </DialogFooter>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         </div>

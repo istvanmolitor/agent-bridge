@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import {
-    Bot,
-    Check,
-    Copy,
-    Folder,
-    KeyRound,
-    Plus,
-    Trash2,
-    X,
-} from '@lucide/vue';
+import { Check, Copy, Folder, KeyRound, Plus, Trash2, X } from '@lucide/vue';
 import { ref } from 'vue';
 import ApiKeyController from '@/actions/App/Http/Controllers/Admin/ApiKeyController';
+import AgentSelect from '@/components/AgentSelect.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -42,14 +35,24 @@ type ApiKey = {
     token: string;
     created_at: string | null;
     last_used_at: string | null;
-    agent: { id: number; name: string } | null;
+    agent: { id: number; name: string; avatar_url?: string | null } | null;
     workspace: { id: number; name: string } | null;
 };
 
 type Agent = {
     id: number;
     name: string;
+    avatar_url?: string | null;
 };
+
+function initials(name: string): string {
+    return name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase() ?? '')
+        .join('');
+}
 
 type Workspace = {
     id: number;
@@ -139,27 +142,15 @@ async function copyRowToken(apiKey: ApiKey) {
 
                         <div class="grid gap-2">
                             <Label for="agent_id">Ügynök</Label>
-                            <Select
+                            <AgentSelect
+                                trigger-id="agent_id"
                                 name="agent_id"
+                                :agents="agents"
                                 :default-value="
                                     agents[0] ? String(agents[0].id) : undefined
                                 "
-                            >
-                                <SelectTrigger id="agent_id">
-                                    <SelectValue
-                                        placeholder="Válassz ügynököt…"
-                                    />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem
-                                        v-for="agent in agents"
-                                        :key="agent.id"
-                                        :value="String(agent.id)"
-                                    >
-                                        {{ agent.name }}
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
+                                trigger-class="w-full"
+                            />
                             <InputError :message="errors.agent_id" />
                         </div>
 
@@ -258,8 +249,24 @@ async function copyRowToken(apiKey: ApiKey) {
                     :key="apiKey.id"
                     class="flex items-start gap-4 p-5 transition-colors duration-[120ms] ease-out hover:bg-surface-200"
                 >
+                    <Avatar
+                        v-if="apiKey.agent"
+                        class="size-11 shrink-0 rounded-md"
+                    >
+                        <AvatarImage
+                            v-if="apiKey.agent.avatar_url"
+                            :src="apiKey.agent.avatar_url"
+                            :alt="apiKey.agent.name"
+                        />
+                        <AvatarFallback
+                            class="rounded-md bg-surface-300 text-sm font-medium text-ink-muted"
+                        >
+                            {{ initials(apiKey.agent.name) }}
+                        </AvatarFallback>
+                    </Avatar>
                     <div
-                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-border bg-surface-200 text-plasma"
+                        v-else
+                        class="flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-surface-200 text-plasma"
                     >
                         <KeyRound class="h-4 w-4" />
                     </div>
@@ -273,9 +280,8 @@ async function copyRowToken(apiKey: ApiKey) {
                             }}</span>
                             <span
                                 v-if="apiKey.agent"
-                                class="nova-code inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface-200 px-2 py-0.5 text-ink-muted"
+                                class="nova-code text-ink-muted"
                             >
-                                <Bot class="h-3 w-3" />
                                 {{ apiKey.agent.name }}
                             </span>
                             <span

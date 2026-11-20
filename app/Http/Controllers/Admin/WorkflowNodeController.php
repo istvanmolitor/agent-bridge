@@ -36,7 +36,7 @@ class WorkflowNodeController extends Controller
         Gate::authorize('update', $workflow);
         abort_unless($node->workflow_id === $workflow->id, 404);
 
-        $node->update($request->safe()->only(['name', 'description']));
+        $node->update($request->safe()->only(['name', 'description', 'settings']));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Node updated.')]);
 
@@ -69,7 +69,11 @@ class WorkflowNodeController extends Controller
         Gate::authorize('update', $workflow);
         abort_unless($node->workflow_id === $workflow->id, 404);
 
-        $runner->run($node);
+        if (! $runner->run($node)) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => $node->error]);
+
+            return back();
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Workflow started.')]);
 

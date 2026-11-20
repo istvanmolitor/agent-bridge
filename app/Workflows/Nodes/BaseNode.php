@@ -3,6 +3,8 @@
 namespace App\Workflows\Nodes;
 
 use App\Models\WorkflowNode;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Base class for every workflow node type.
@@ -29,6 +31,51 @@ abstract class BaseNode
      * @return array<string, mixed>
      */
     abstract public function execute(array $parameters): array;
+
+    /**
+     * Validation rules for the incoming parameters. Override in a node type to
+     * reject input it cannot work with before {@see execute()} runs.
+     *
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [];
+    }
+
+    /**
+     * Custom validation messages for {@see rules()}.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [];
+    }
+
+    /**
+     * Validation rules for the node's persisted settings (keyed by the setting
+     * name, e.g. "prompt_id"). Override in a node type that stores editable
+     * configuration on the {@see WorkflowNode::$settings} column.
+     *
+     * @return array<string, mixed>
+     */
+    public static function settingsRules(): array
+    {
+        return [];
+    }
+
+    /**
+     * Validate the incoming parameters against {@see rules()}.
+     *
+     * @param  array<string, mixed>  $parameters
+     *
+     * @throws ValidationException
+     */
+    public function validate(array $parameters): void
+    {
+        Validator::make($parameters, $this->rules(), $this->messages())->validate();
+    }
 
     /**
      * The unique, persisted type key for this node (e.g. "http_request").
@@ -65,6 +112,16 @@ abstract class BaseNode
     }
 
     /**
+     * Whether the node runs on the queue. Lightweight nodes that only prepare
+     * or forward data (e.g. the start and prompt nodes) override this to run
+     * synchronously, so they execute at once instead of waiting on a worker.
+     */
+    public static function queued(): bool
+    {
+        return true;
+    }
+
+    /**
      * Whether the node accepts an incoming connection (a target handle).
      */
     public static function hasInput(): bool
@@ -83,7 +140,7 @@ abstract class BaseNode
     /**
      * Serialise the type descriptor for the frontend.
      *
-     * @return array{key: string, label: string, description: string, icon: string, color: string, hasInput: bool, hasOutput: bool}
+     * @return array{key: string, label: string, description: string, icon: string, color: string, hasInput: bool, hasOutput: bool, hasSettings: bool}
      */
     public static function toArray(): array
     {
@@ -95,6 +152,7 @@ abstract class BaseNode
             'color' => static::color(),
             'hasInput' => static::hasInput(),
             'hasOutput' => static::hasOutput(),
+            'hasSettings' => static::settingsRules() !== [],
         ];
     }
 }

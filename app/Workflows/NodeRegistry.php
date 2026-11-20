@@ -5,6 +5,8 @@ namespace App\Workflows;
 use App\Workflows\Nodes\AgentNode;
 use App\Workflows\Nodes\BaseNode;
 use App\Workflows\Nodes\HttpRequestNode;
+use App\Workflows\Nodes\LogNode;
+use App\Workflows\Nodes\PromptNode;
 use App\Workflows\Nodes\StartNode;
 
 /**
@@ -19,8 +21,10 @@ class NodeRegistry
      */
     protected const TYPES = [
         StartNode::class,
+        PromptNode::class,
         AgentNode::class,
         HttpRequestNode::class,
+        LogNode::class,
     ];
 
     /**

@@ -61,8 +61,9 @@ test('the editor renders the workflow with its nodes and connections', function 
         ->assertInertia(fn (Assert $page) => $page
             ->component('admin/WorkflowShow')
             ->where('workflow.id', $workflow->id)
-            ->has('nodeTypes', 3)
+            ->has('nodeTypes', 5)
             ->where('nodeTypes.0.key', 'start')
+            ->has('prompts')
             ->has('nodes', 2)
             ->has('nodes.0.type')
             ->has('connections', 1)

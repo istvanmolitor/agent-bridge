@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Events\WorkflowNodeStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\WorkflowRequest;
+use App\Models\Agent;
+use App\Models\Prompt;
 use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\NodeRegistry;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Http\RedirectResponse;
@@ -79,13 +82,25 @@ class WorkflowController extends Controller
         return Inertia::render('admin/WorkflowShow', [
             'workflow' => $workflow->only(['id', 'name', 'description']),
             'nodeTypes' => NodeRegistry::options(),
+            // Prompts the owner can pick from on a prompt node.
+            'prompts' => Prompt::where('user_id', $workflow->user_id)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            // Agents the owner can run on an agent node.
+            'agents' => Agent::where('user_id', $workflow->user_id)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            // Workspaces the owner can run an agent node in.
+            'workspaces' => Workspace::where('user_id', $workflow->user_id)
+                ->orderBy('name')
+                ->get(['id', 'name']),
             // Live prop: Reverb broadcasts WorkflowNodeStatusChanged on the
             // workflow's private channel, and Inertia re-fetches the nodes so the
             // canvas reflects run status without polling.
             'nodes' => Inertia::live(
                 fn () => $workflow->nodes()
                     ->orderBy('id')
-                    ->get(['id', 'type', 'name', 'description', 'status', 'position_x', 'position_y']),
+                    ->get(['id', 'type', 'name', 'description', 'status', 'error', 'settings', 'position_x', 'position_y']),
                 on: WorkflowNodeStatusChanged::class,
                 channel: new PrivateChannel('workflows.'.$workflow->id),
             ),

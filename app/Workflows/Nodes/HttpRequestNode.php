@@ -20,6 +20,18 @@ class HttpRequestNode extends BaseNode
         return $parameters;
     }
 
+    /**
+     * The request needs a target URL from the upstream node.
+     *
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'url' => ['required', 'url'],
+        ];
+    }
+
     public static function key(): string
     {
         return 'http_request';

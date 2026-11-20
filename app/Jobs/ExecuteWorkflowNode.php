@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Events\WorkflowNodeStatusChanged;
 use App\Models\WorkflowNode;
 use App\Workflows\WorkflowRunner;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,7 +24,8 @@ class ExecuteWorkflowNode implements ShouldQueue
 
     /**
      * Run the node's execute() method and fan out to its child nodes, passing
-     * the return value along as their parameters.
+     * the return value along as their parameters. The parameters were already
+     * validated by {@see WorkflowRunner::run()} before the job was queued.
      */
     public function handle(WorkflowRunner $runner): void
     {
@@ -43,26 +43,16 @@ class ExecuteWorkflowNode implements ShouldQueue
 
         // Flip the node to "running" so the editor can reflect it, then make sure
         // it always falls back to "idle" even when execute() throws.
-        $this->setStatus($node, WorkflowNode::STATUS_RUNNING);
+        $node->updateStatus(WorkflowNode::STATUS_RUNNING);
 
         try {
             $result = $type->execute($this->parameters);
         } finally {
-            $this->setStatus($node, WorkflowNode::STATUS_IDLE);
+            $node->updateStatus(WorkflowNode::STATUS_IDLE);
         }
 
         foreach ($node->children as $child) {
             $runner->run($child, $result);
         }
-    }
-
-    /**
-     * Persist the node's status and broadcast it so the editor updates live.
-     */
-    private function setStatus(WorkflowNode $node, string $status): void
-    {
-        $node->forceFill(['status' => $status])->save();
-
-        WorkflowNodeStatusChanged::dispatch($node->workflow_id, $node->id, $status);
     }
 }

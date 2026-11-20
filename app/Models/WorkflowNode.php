@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\WorkflowNodeStatusChanged;
 use App\Workflows\NodeRegistry;
 use App\Workflows\Nodes\BaseNode;
 use Database\Factories\WorkflowNodeFactory;
@@ -19,12 +20,14 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string|null $description
  * @property string $status
+ * @property string|null $error
+ * @property array<string, mixed> $settings
  * @property float $position_x
  * @property float $position_y
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['type', 'name', 'description', 'status', 'position_x', 'position_y'])]
+#[Fillable(['type', 'name', 'description', 'status', 'settings', 'position_x', 'position_y'])]
 class WorkflowNode extends Model
 {
     /** @use HasFactory<WorkflowNodeFactory> */
@@ -35,6 +38,20 @@ class WorkflowNode extends Model
 
     /** The node is executing on the queue right now. */
     public const STATUS_RUNNING = 'running';
+
+    /** The node's last run failed; the reason is stored in `error`. */
+    public const STATUS_FAILED = 'failed';
+
+    /**
+     * Persist the run status (and error, cleared unless given) and broadcast it
+     * so the editor canvas updates live.
+     */
+    public function updateStatus(string $status, ?string $error = null): void
+    {
+        $this->forceFill(['status' => $status, 'error' => $error])->save();
+
+        WorkflowNodeStatusChanged::dispatch($this->workflow_id, $this->id, $status);
+    }
 
     /**
      * The node type class backing this node, or null when the type is unknown.
@@ -97,6 +114,7 @@ class WorkflowNode extends Model
     protected function casts(): array
     {
         return [
+            'settings' => 'array',
             'position_x' => 'float',
             'position_y' => 'float',
         ];

@@ -12,11 +12,15 @@ class StartNode extends BaseNode
      */
     public function execute(array $parameters): array
     {
-        // Placeholder work so the "running" status is visible on the canvas.
-        // Remove once the entry point does real setup.
-        sleep(2);
-
         return $parameters;
+    }
+
+    /**
+     * The entry point does no heavy work: run it at once, off the queue.
+     */
+    public static function queued(): bool
+    {
+        return false;
     }
 
     public static function key(): string

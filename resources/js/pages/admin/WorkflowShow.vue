@@ -14,8 +14,11 @@ import {
     VueFlow,
 } from '@vue-flow/core';
 import {
+    Bot,
     Check,
+    CircleAlert,
     LoaderCircle,
+    MessageSquare,
     Pencil,
     Play,
     Plus,
@@ -23,10 +26,12 @@ import {
     Unlink,
     X,
 } from '@lucide/vue';
+import { useEcho } from '@laravel/echo-vue';
 import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogClose,
@@ -68,7 +73,15 @@ type NodeType = {
     color: string;
     hasInput: boolean;
     hasOutput: boolean;
+    hasSettings: boolean;
 };
+
+type NodeSettings = {
+    prompt_id?: number | null;
+    agent_id?: number | null;
+    workspace_id?: number | null;
+    to_file?: boolean;
+} | null;
 
 type NodeData = {
     id: number;
@@ -76,6 +89,8 @@ type NodeData = {
     name: string;
     description: string | null;
     status: string;
+    error: string | null;
+    settings: NodeSettings;
     position_x: number;
     position_y: number;
 };
@@ -86,12 +101,25 @@ type ConnectionData = {
     target_node_id: number;
 };
 
+type SelectOption = { id: number; name: string };
+
 const props = defineProps<{
     workflow: { id: number; name: string; description: string | null };
     nodeTypes: NodeType[];
+    prompts: SelectOption[];
+    agents: SelectOption[];
+    workspaces: SelectOption[];
     nodes: NodeData[];
     connections: ConnectionData[];
 }>();
+
+const promptMap = computed<Record<number, string>>(() =>
+    Object.fromEntries(props.prompts.map((prompt) => [prompt.id, prompt.name])),
+);
+
+const agentMap = computed<Record<number, string>>(() =>
+    Object.fromEntries(props.agents.map((agent) => [agent.id, agent.name])),
+);
 
 const typeMap = computed<Record<string, NodeType>>(() =>
     Object.fromEntries(props.nodeTypes.map((type) => [type.key, type])),
@@ -121,6 +149,9 @@ type FlowNode = {
         name: string;
         description: string | null;
         status: string;
+        error: string | null;
+        promptLabel: string | null;
+        agentLabel: string | null;
     };
 };
 
@@ -134,17 +165,54 @@ type FlowEdge = {
 const vfNodes = ref<FlowNode[]>([]);
 const vfEdges = ref<FlowEdge[]>([]);
 
+function promptLabelFor(node: NodeData): string | null {
+    const promptId = node.settings?.prompt_id;
+
+    return promptId != null ? (promptMap.value[promptId] ?? null) : null;
+}
+
+function agentLabelFor(node: NodeData): string | null {
+    const agentId = node.settings?.agent_id;
+
+    return agentId != null ? (agentMap.value[agentId] ?? null) : null;
+}
+
+// Nodes whose run finished so fast (the immediate, non-queued ones) the server
+// flipped them back to idle before the canvas could show it. We hold them in
+// the running (green) look for a moment so the user still sees them fire.
+const flashing = ref<Set<number>>(new Set());
+
+function flashNode(nodeId: number): void {
+    flashing.value = new Set(flashing.value).add(nodeId);
+
+    window.setTimeout(() => {
+        const next = new Set(flashing.value);
+        next.delete(nodeId);
+        flashing.value = next;
+    }, 1000);
+}
+
+function nodeData(node: NodeData): FlowNode['data'] {
+    // A flashing node keeps the running look even once the prop says idle.
+    const status = flashing.value.has(node.id) ? 'running' : node.status;
+
+    return {
+        nodeType: node.type,
+        name: node.name,
+        description: node.description,
+        status,
+        error: node.error,
+        promptLabel: promptLabelFor(node),
+        agentLabel: agentLabelFor(node),
+    };
+}
+
 function toVfNode(node: NodeData): FlowNode {
     return {
         id: String(node.id),
         type: 'workflow',
         position: { x: node.position_x, y: node.position_y },
-        data: {
-            nodeType: node.type,
-            name: node.name,
-            description: node.description,
-            status: node.status,
-        },
+        data: nodeData(node),
     };
 }
 
@@ -168,12 +236,7 @@ function syncNodes(): void {
         const current = existing.get(String(node.id));
 
         if (current) {
-            current.data = {
-                nodeType: node.type,
-                name: node.name,
-                description: node.description,
-                status: node.status,
-            };
+            current.data = nodeData(node);
             next.push(current);
         } else {
             next.push(toVfNode(node));
@@ -192,6 +255,21 @@ syncEdges();
 
 watch(() => props.nodes, syncNodes, { deep: true });
 watch(() => props.connections, syncEdges, { deep: true });
+watch(flashing, syncNodes);
+
+// The status broadcast drives the live `nodes` prop, but an immediate node runs
+// and returns to idle within a single request, so its brief "running" status is
+// gone before the re-fetch arrives. Listen to the same event here and hold the
+// node in the running (green) look for a second so the run is still visible.
+useEcho(
+    `workflows.${props.workflow.id}`,
+    '.node.status',
+    (payload: { nodeId: number; status: string }) => {
+        if (payload.status === 'running') {
+            flashNode(payload.nodeId);
+        }
+    },
+);
 
 // --- Canvas interactions ---------------------------------------------------
 
@@ -286,13 +364,54 @@ const nodeMap = computed<Record<string, NodeData>>(() =>
 );
 
 const editing = ref<NodeData | null>(null);
-const editForm = useForm({ name: '', description: '' });
+const editForm = useForm<{
+    name: string;
+    description: string;
+    prompt_id: string;
+    agent_id: string;
+    workspace_id: string;
+    to_file: boolean;
+}>({
+    name: '',
+    description: '',
+    prompt_id: '',
+    agent_id: '',
+    workspace_id: '',
+    to_file: true,
+});
+
+// Which node types expose settings in the edit dialog.
+const editingIsPrompt = computed(() => editing.value?.type === 'prompt');
+const editingIsAgent = computed(() => editing.value?.type === 'agent');
+const editingIsLog = computed(() => editing.value?.type === 'log');
+const promptIdError = computed(
+    () => (editForm.errors as Record<string, string>)['settings.prompt_id'],
+);
+const agentIdError = computed(
+    () => (editForm.errors as Record<string, string>)['settings.agent_id'],
+);
+const workspaceIdError = computed(
+    () => (editForm.errors as Record<string, string>)['settings.workspace_id'],
+);
 
 watch(editing, (node) => {
     if (node) {
         editForm.clearErrors();
         editForm.name = node.name;
         editForm.description = node.description ?? '';
+        editForm.prompt_id =
+            node.settings?.prompt_id != null
+                ? String(node.settings.prompt_id)
+                : '';
+        editForm.agent_id =
+            node.settings?.agent_id != null
+                ? String(node.settings.agent_id)
+                : '';
+        editForm.workspace_id =
+            node.settings?.workspace_id != null
+                ? String(node.settings.workspace_id)
+                : '';
+        editForm.to_file = node.settings?.to_file ?? true;
     }
 });
 
@@ -301,13 +420,37 @@ function submitEdit(): void {
         return;
     }
 
-    editForm.put(updateNode.url([props.workflow.id, editing.value.id]), {
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => {
-            editing.value = null;
-        },
-    });
+    editForm
+        .transform((data) => {
+            const payload: Record<string, unknown> = {
+                name: data.name,
+                description: data.description,
+            };
+
+            if (editingIsPrompt.value) {
+                payload.settings = {
+                    prompt_id: data.prompt_id ? Number(data.prompt_id) : null,
+                };
+            } else if (editingIsAgent.value) {
+                payload.settings = {
+                    agent_id: data.agent_id ? Number(data.agent_id) : null,
+                    workspace_id: data.workspace_id
+                        ? Number(data.workspace_id)
+                        : null,
+                };
+            } else if (editingIsLog.value) {
+                payload.settings = { to_file: data.to_file };
+            }
+
+            return payload;
+        })
+        .put(updateNode.url([props.workflow.id, editing.value.id]), {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                editing.value = null;
+            },
+        });
 }
 
 function runStart(nodeId: string): void {
@@ -472,18 +615,26 @@ function confirmDelete(): void {
                             :class="{
                                 'workflow-node--running':
                                     data.status === 'running',
+                                'workflow-node--failed':
+                                    data.status === 'failed',
                             }"
                             :style="{
                                 borderLeftColor:
                                     data.status === 'running'
                                         ? '#10b981'
-                                        : (typeMap[data.nodeType]?.color ??
-                                          'var(--color-border)'),
+                                        : data.status === 'failed'
+                                          ? 'var(--color-signal-alert, #ef4444)'
+                                          : (typeMap[data.nodeType]?.color ??
+                                            'var(--color-border)'),
                             }"
                         >
                             <LoaderCircle
                                 v-if="data.status === 'running'"
                                 class="workflow-node__spinner size-4 animate-spin"
+                            />
+                            <CircleAlert
+                                v-else-if="data.status === 'failed'"
+                                class="workflow-node__failed-icon size-4"
                             />
 
                             <div class="workflow-node__actions nodrag">
@@ -530,6 +681,33 @@ function confirmDelete(): void {
                                 class="workflow-node__desc"
                             >
                                 {{ data.description }}
+                            </p>
+                            <p
+                                v-if="data.nodeType === 'prompt'"
+                                class="workflow-node__setting"
+                            >
+                                <MessageSquare class="size-3" />
+                                {{
+                                    data.promptLabel ??
+                                    'Nincs prompt kiválasztva'
+                                }}
+                            </p>
+                            <p
+                                v-if="data.nodeType === 'agent'"
+                                class="workflow-node__setting"
+                            >
+                                <Bot class="size-3" />
+                                {{
+                                    data.agentLabel ??
+                                    'Nincs ügynök kiválasztva'
+                                }}
+                            </p>
+                            <p
+                                v-if="data.status === 'failed' && data.error"
+                                class="workflow-node__error"
+                                role="alert"
+                            >
+                                {{ data.error }}
                             </p>
 
                             <button
@@ -579,6 +757,99 @@ function confirmDelete(): void {
                         required
                     />
                     <InputError :message="editForm.errors.name" />
+                </div>
+
+                <div v-if="editingIsPrompt" class="grid gap-2">
+                    <Label for="edit-node-prompt">Prompt</Label>
+                    <Select v-model="editForm.prompt_id">
+                        <SelectTrigger id="edit-node-prompt">
+                            <SelectValue placeholder="Válassz egy promptot" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem
+                                v-for="prompt in prompts"
+                                :key="prompt.id"
+                                :value="String(prompt.id)"
+                            >
+                                {{ prompt.name }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <p
+                        v-if="prompts.length === 0"
+                        class="text-xs text-ink-muted"
+                    >
+                        Még nincs prompt. Hozz létre egyet a Promptok oldalon.
+                    </p>
+                    <InputError :message="promptIdError" />
+                </div>
+
+                <template v-if="editingIsAgent">
+                    <div class="grid gap-2">
+                        <Label for="edit-node-agent">Ügynök</Label>
+                        <Select v-model="editForm.agent_id">
+                            <SelectTrigger id="edit-node-agent">
+                                <SelectValue
+                                    placeholder="Válassz egy ügynököt"
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem
+                                    v-for="agent in agents"
+                                    :key="agent.id"
+                                    :value="String(agent.id)"
+                                >
+                                    {{ agent.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p
+                            v-if="agents.length === 0"
+                            class="text-xs text-ink-muted"
+                        >
+                            Még nincs ügynök. Hozz létre egyet az Ügynökök
+                            oldalon.
+                        </p>
+                        <InputError :message="agentIdError" />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="edit-node-workspace">Munkaterület</Label>
+                        <Select v-model="editForm.workspace_id">
+                            <SelectTrigger id="edit-node-workspace">
+                                <SelectValue
+                                    placeholder="Válassz egy munkaterületet"
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem
+                                    v-for="workspace in workspaces"
+                                    :key="workspace.id"
+                                    :value="String(workspace.id)"
+                                >
+                                    {{ workspace.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p
+                            v-if="workspaces.length === 0"
+                            class="text-xs text-ink-muted"
+                        >
+                            Még nincs munkaterület. Hozz létre egyet a
+                            Munkaterületek oldalon.
+                        </p>
+                        <InputError :message="workspaceIdError" />
+                    </div>
+                </template>
+
+                <div v-if="editingIsLog" class="flex items-center gap-2">
+                    <Checkbox
+                        id="edit-node-to-file"
+                        v-model="editForm.to_file"
+                    />
+                    <Label for="edit-node-to-file" class="font-normal">
+                        Írás a napló fájlba
+                    </Label>
                 </div>
 
                 <div class="grid gap-2">
@@ -658,6 +929,35 @@ function confirmDelete(): void {
     box-shadow:
         0 0 0 1px #10b981,
         0 0 14px rgb(16 185 129 / 0.35);
+}
+
+.workflow-node--failed {
+    border-color: var(--color-signal-alert, #ef4444);
+    box-shadow:
+        0 0 0 1px var(--color-signal-alert, #ef4444),
+        0 0 14px rgb(239 68 68 / 0.35);
+}
+
+.workflow-node__failed-icon {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    color: var(--color-signal-alert, #ef4444);
+    background-color: var(--color-surface-200);
+    border-radius: 9999px;
+    padding: 0.125rem;
+    box-sizing: content-box;
+}
+
+.workflow-node__error {
+    margin-top: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    white-space: pre-line;
+    color: var(--color-signal-alert, #ef4444);
+    background-color: rgb(239 68 68 / 0.1);
 }
 
 .workflow-node__spinner {
@@ -747,6 +1047,15 @@ function confirmDelete(): void {
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.workflow-node__setting {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
 }
 
 .workflow-node__play {

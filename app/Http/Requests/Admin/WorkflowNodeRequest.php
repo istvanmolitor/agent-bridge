@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\WorkflowNode;
 use App\Workflows\NodeRegistry;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -26,6 +27,19 @@ class WorkflowNodeRequest extends FormRequest
         // The type is fixed when the node is created and cannot change afterwards.
         if ($this->isMethod('post')) {
             $rules['type'] = ['required', Rule::in(NodeRegistry::keys())];
+        }
+
+        // Settings are edited after creation. Each node type declares the rules
+        // for its own settings; everything else on the column is rejected.
+        if ($this->isMethod('put')) {
+            $rules['settings'] = ['nullable', 'array'];
+
+            $node = $this->route('node');
+            $class = NodeRegistry::classFor($node instanceof WorkflowNode ? $node->type : '');
+
+            foreach ($class ? $class::settingsRules() : [] as $key => $rule) {
+                $rules["settings.{$key}"] = $rule;
+            }
         }
 
         return $rules;

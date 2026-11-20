@@ -85,4 +85,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Prompt::class);
     }
+
+    /**
+     * @return HasMany<Workflow, $this>
+     */
+    public function workflows(): HasMany
+    {
+        return $this->hasMany(Workflow::class);
+    }
 }

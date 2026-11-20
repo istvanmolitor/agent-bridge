@@ -9,6 +9,7 @@ import {
     ScrollText,
     TerminalSquare,
     Users,
+    Workflow,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -29,6 +30,7 @@ import { index as indexAdminLogs } from '@/routes/admin/logs';
 import { index as indexAdminPrompts } from '@/routes/admin/prompts';
 import { index as indexAdminUsers } from '@/routes/admin/users';
 import { index as indexAdminChat } from '@/routes/admin/chat';
+import { index as indexAdminWorkflows } from '@/routes/admin/workflows';
 import { index as indexAdminWorkspaces } from '@/routes/admin/workspaces';
 import type { NavItem } from '@/types';
 
@@ -54,6 +56,11 @@ const mainNavItems = computed<NavItem[]>(() => {
                 title: 'Promptok',
                 href: indexAdminPrompts(),
                 icon: MessageSquareText,
+            },
+            {
+                title: 'Folyamatok',
+                href: indexAdminWorkflows(),
+                icon: Workflow,
             },
             {
                 title: 'Munkaterületek',

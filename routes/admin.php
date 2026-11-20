@@ -6,6 +6,9 @@ use App\Http\Controllers\Admin\ChatController;
 use App\Http\Controllers\Admin\PromptController;
 use App\Http\Controllers\Admin\PromptLogController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\WorkflowConnectionController;
+use App\Http\Controllers\Admin\WorkflowController;
+use App\Http\Controllers\Admin\WorkflowNodeController;
 use App\Http\Controllers\Admin\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +32,20 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('workspaces/{workspace}', [WorkspaceController::class, 'destroy'])->name('workspaces.destroy');
     Route::get('workspaces/{workspace}/tree', [WorkspaceController::class, 'tree'])->name('workspaces.tree');
     Route::get('workspaces/{workspace}/file', [WorkspaceController::class, 'file'])->name('workspaces.file');
+
+    Route::get('workflows', [WorkflowController::class, 'index'])->name('workflows.index');
+    Route::post('workflows', [WorkflowController::class, 'store'])->name('workflows.store');
+    Route::get('workflows/{workflow}', [WorkflowController::class, 'show'])->name('workflows.show');
+    Route::put('workflows/{workflow}', [WorkflowController::class, 'update'])->name('workflows.update');
+    Route::delete('workflows/{workflow}', [WorkflowController::class, 'destroy'])->name('workflows.destroy');
+
+    Route::post('workflows/{workflow}/nodes', [WorkflowNodeController::class, 'store'])->name('workflows.nodes.store');
+    Route::put('workflows/{workflow}/nodes/{node}', [WorkflowNodeController::class, 'update'])->name('workflows.nodes.update');
+    Route::patch('workflows/{workflow}/nodes/{node}/position', [WorkflowNodeController::class, 'position'])->name('workflows.nodes.position');
+    Route::delete('workflows/{workflow}/nodes/{node}', [WorkflowNodeController::class, 'destroy'])->name('workflows.nodes.destroy');
+
+    Route::post('workflows/{workflow}/connections', [WorkflowConnectionController::class, 'store'])->name('workflows.connections.store');
+    Route::delete('workflows/{workflow}/connections/{connection}', [WorkflowConnectionController::class, 'destroy'])->name('workflows.connections.destroy');
 
     Route::get('api-keys', [ApiKeyController::class, 'index'])->name('api-keys.index');
     Route::post('api-keys', [ApiKeyController::class, 'store'])->name('api-keys.store');

@@ -17,6 +17,7 @@ import {
     Bot,
     Check,
     CircleAlert,
+    Clock,
     FolderGit2,
     LoaderCircle,
     MessageSquare,
@@ -24,6 +25,8 @@ import {
     Play,
     Plus,
     ScrollText,
+    Search,
+    Timer,
     Trash2,
     Unlink,
     X,
@@ -93,6 +96,8 @@ type NodeSettings = {
     agent_id?: number | null;
     workspace_id?: number | null;
     to_file?: boolean;
+    interval_minutes?: number | null;
+    enabled?: boolean;
     inputs?: KeyMap;
     outputs?: KeyMap;
 } | null;
@@ -182,6 +187,7 @@ type FlowNode = {
         agentLabel: string | null;
         agentAvatar: string | null;
         workspaceLabel: string | null;
+        intervalLabel: string | null;
     };
 };
 
@@ -221,6 +227,20 @@ function workspaceLabelFor(node: NodeData): string | null {
         : null;
 }
 
+function intervalLabelFor(node: NodeData): string | null {
+    const minutes = node.settings?.interval_minutes;
+
+    if (minutes == null) {
+        return null;
+    }
+
+    if (node.settings?.enabled === false) {
+        return 'Szünetel';
+    }
+
+    return `Minden ${minutes} percben`;
+}
+
 // Nodes whose run finished so fast (the immediate, non-queued ones) the server
 // flipped them back to idle before the canvas could show it. We hold them in
 // the running (green) look for a moment so the user still sees them fire.
@@ -251,6 +271,7 @@ function nodeData(node: NodeData): FlowNode['data'] {
         agentLabel: agentLabelFor(node),
         agentAvatar: agentAvatarFor(node),
         workspaceLabel: workspaceLabelFor(node),
+        intervalLabel: intervalLabelFor(node),
     };
 }
 
@@ -418,6 +439,8 @@ const editForm = useForm<{
     agent_id: string;
     workspace_id: string;
     to_file: boolean;
+    interval_minutes: string;
+    enabled: boolean;
     inputs: KeyMap;
     outputs: KeyMap;
 }>({
@@ -427,6 +450,8 @@ const editForm = useForm<{
     agent_id: '',
     workspace_id: '',
     to_file: true,
+    interval_minutes: '5',
+    enabled: true,
     inputs: {},
     outputs: {},
 });
@@ -435,6 +460,7 @@ const editForm = useForm<{
 const editingIsPrompt = computed(() => editing.value?.type === 'prompt');
 const editingIsAgent = computed(() => editing.value?.type === 'agent');
 const editingIsLog = computed(() => editing.value?.type === 'log');
+const editingIsInterval = computed(() => editing.value?.type === 'interval');
 
 // The descriptor of the node being edited, used to decide which of the three
 // edit columns (incoming / settings / outgoing) apply to this type.
@@ -464,6 +490,10 @@ const agentIdError = computed(
 const workspaceIdError = computed(
     () => (editForm.errors as Record<string, string>)['settings.workspace_id'],
 );
+const intervalMinutesError = computed(
+    () =>
+        (editForm.errors as Record<string, string>)['settings.interval_minutes'],
+);
 
 watch(editing, (node) => {
     if (node) {
@@ -483,6 +513,11 @@ watch(editing, (node) => {
                 ? String(node.settings.workspace_id)
                 : '';
         editForm.to_file = node.settings?.to_file ?? true;
+        editForm.interval_minutes =
+            node.settings?.interval_minutes != null
+                ? String(node.settings.interval_minutes)
+                : '5';
+        editForm.enabled = node.settings?.enabled ?? true;
 
         // Start from the type's default key map, then apply any stored override
         // so cleared/legacy nodes still show the defaults.
@@ -518,6 +553,11 @@ function submitEdit(): void {
                     : null;
             } else if (editingIsLog.value) {
                 settings.to_file = data.to_file;
+            } else if (editingIsInterval.value) {
+                settings.interval_minutes = data.interval_minutes
+                    ? Number(data.interval_minutes)
+                    : null;
+                settings.enabled = data.enabled;
             }
 
             // Incoming/outgoing keys are a role -> key map. A blank field falls
@@ -561,13 +601,20 @@ function submitEdit(): void {
         });
 }
 
-function runStart(nodeId: string): void {
+// The text typed into each start-input node, kept by node id so the canvas can
+// hand it to the run request without persisting it on the node.
+const startInputTexts = ref<Record<string, string>>({});
+
+function runStart(nodeId: string, text?: string): void {
     router.post(
         runNode.url([props.workflow.id, Number(nodeId)]),
-        {},
+        text !== undefined ? { text } : {},
         { preserveScroll: true, preserveState: true },
     );
 }
+
+// The log node whose full output is shown in the viewer modal.
+const viewingLog = ref<{ name: string; output: string } | null>(null);
 
 const deleting = ref<NodeData | null>(null);
 
@@ -800,6 +847,16 @@ function confirmDelete(): void {
                                     'Nincs prompt kiválasztva'
                                 }}
                             </p>
+                            <p
+                                v-if="data.nodeType === 'interval'"
+                                class="workflow-node__setting"
+                            >
+                                <Timer class="size-3" />
+                                {{
+                                    data.intervalLabel ??
+                                    'Nincs időköz beállítva'
+                                }}
+                            </p>
                             <div
                                 v-if="data.nodeType === 'agent'"
                                 class="workflow-node__agent"
@@ -825,10 +882,27 @@ function confirmDelete(): void {
                                     {{ data.workspaceLabel }}
                                 </span>
                             </div>
-                            <pre
+                            <div
                                 v-if="data.nodeType === 'log' && data.output"
-                                class="nodrag workflow-node__output"
-                                >{{ data.output }}</pre>
+                                class="workflow-node__output-wrap"
+                            >
+                                <button
+                                    type="button"
+                                    class="nodrag workflow-node__zoom"
+                                    title="Tartalom megtekintése"
+                                    @click.stop="
+                                        viewingLog = {
+                                            name: data.name,
+                                            output: data.output ?? '',
+                                        }
+                                    "
+                                >
+                                    <Search class="size-3.5" />
+                                </button>
+                                <pre class="nodrag workflow-node__output">{{
+                                    data.output
+                                }}</pre>
+                            </div>
                             <p
                                 v-else-if="data.nodeType === 'log'"
                                 class="workflow-node__setting"
@@ -856,6 +930,39 @@ function confirmDelete(): void {
                                     fill="currentColor"
                                 />
                             </button>
+
+                            <div
+                                v-if="data.nodeType === 'interval'"
+                                class="workflow-node__clock"
+                            >
+                                <Clock class="size-7" />
+                            </div>
+
+                            <div
+                                v-if="data.nodeType === 'start_input'"
+                                class="nodrag workflow-node__start-input"
+                            >
+                                <Textarea
+                                    v-model="startInputTexts[id]"
+                                    rows="3"
+                                    placeholder="Írd be a szöveget…"
+                                    class="text-sm"
+                                    @mousedown.stop
+                                />
+                                <button
+                                    type="button"
+                                    class="workflow-node__play workflow-node__play--sm"
+                                    title="Folyamat indítása ezzel a szöveggel"
+                                    @click="
+                                        runStart(id, startInputTexts[id] ?? '')
+                                    "
+                                >
+                                    <Play
+                                        class="size-6 translate-x-[1px]"
+                                        fill="currentColor"
+                                    />
+                                </button>
+                            </div>
 
                             <Handle
                                 v-if="typeMap[data.nodeType]?.hasOutput ?? true"
@@ -1042,6 +1149,39 @@ function confirmDelete(): void {
                             </Label>
                         </div>
 
+                        <template v-if="editingIsInterval">
+                            <div class="grid gap-2">
+                                <Label for="edit-node-interval">
+                                    Időköz (perc)
+                                </Label>
+                                <Input
+                                    id="edit-node-interval"
+                                    v-model="editForm.interval_minutes"
+                                    type="number"
+                                    min="1"
+                                    placeholder="pl. 5"
+                                />
+                                <p class="text-xs text-ink-muted">
+                                    Ennyi percenként indul el automatikusan a
+                                    folyamat.
+                                </p>
+                                <InputError :message="intervalMinutesError" />
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <Checkbox
+                                    id="edit-node-enabled"
+                                    v-model="editForm.enabled"
+                                />
+                                <Label
+                                    for="edit-node-enabled"
+                                    class="font-normal"
+                                >
+                                    Ütemezés aktív
+                                </Label>
+                            </div>
+                        </template>
+
                         <div class="grid gap-2">
                             <Label for="edit-node-description">Leírás</Label>
                             <Textarea
@@ -1112,6 +1252,29 @@ function confirmDelete(): void {
                     </Button>
                 </DialogFooter>
             </form>
+        </DialogContent>
+    </Dialog>
+
+    <!-- Log output viewer dialog -->
+    <Dialog
+        :open="viewingLog !== null"
+        @update:open="(open) => (viewingLog = open ? viewingLog : null)"
+    >
+        <DialogContent class="sm:max-w-3xl">
+            <DialogHeader class="space-y-3">
+                <DialogTitle>{{ viewingLog?.name }}</DialogTitle>
+                <DialogDescription>A napló node kimenete.</DialogDescription>
+            </DialogHeader>
+
+            <pre class="workflow-log-viewer">{{ viewingLog?.output }}</pre>
+
+            <DialogFooter>
+                <DialogClose as-child>
+                    <Button variant="secondary" type="button">
+                        <X /> Bezárás</Button
+                    >
+                </DialogClose>
+            </DialogFooter>
         </DialogContent>
     </Dialog>
 
@@ -1296,6 +1459,50 @@ function confirmDelete(): void {
     color: var(--color-ink-muted);
 }
 
+.workflow-node__output-wrap {
+    position: relative;
+}
+
+.workflow-node__zoom {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.25rem;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.375rem;
+    color: var(--color-ink-muted);
+    background-color: var(--color-surface-200);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition:
+        color 120ms ease-out,
+        background-color 120ms ease-out;
+}
+
+.workflow-node__zoom:hover {
+    color: var(--color-ink);
+    background-color: var(--color-surface-300);
+}
+
+.workflow-log-viewer {
+    max-height: 60vh;
+    overflow: auto;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--color-ink);
+    background-color: var(--color-surface-100);
+    border: 1px solid var(--color-surface-300);
+}
+
 .workflow-node__output {
     margin-top: 0.5rem;
     padding: 0.375rem 0.5rem;
@@ -1360,4 +1567,33 @@ function confirmDelete(): void {
 .workflow-node__play:active {
     transform: scale(0.97);
 }
+
+.workflow-node__start-input {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.workflow-node__play--sm {
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0;
+    box-shadow: 0 4px 12px rgb(16 185 129 / 0.35);
+}
+
+.workflow-node__clock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin: 0.75rem auto 0.25rem;
+    border-radius: 9999px;
+    color: #fff;
+    background-color: #f59e0b;
+    box-shadow: 0 6px 16px rgb(245 158 11 / 0.35);
+}
+
 </style>

@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $error
  * @property array<string, mixed> $settings
  * @property string|null $output
+ * @property Carbon|null $last_run_at
  * @property float $position_x
  * @property float $position_y
  * @property Carbon|null $created_at
@@ -132,6 +133,7 @@ class WorkflowNode extends Model
     {
         return [
             'settings' => 'array',
+            'last_run_at' => 'datetime',
             'position_x' => 'float',
             'position_y' => 'float',
         ];

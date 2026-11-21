@@ -64,12 +64,22 @@ class WorkflowNodeController extends Controller
     /**
      * Start the workflow from this node by queueing it for execution.
      */
-    public function run(Workflow $workflow, WorkflowNode $node, WorkflowRunner $runner): RedirectResponse
+    public function run(Request $request, Workflow $workflow, WorkflowNode $node, WorkflowRunner $runner): RedirectResponse
     {
         Gate::authorize('update', $workflow);
         abort_unless($node->workflow_id === $workflow->id, 404);
 
-        if (! $runner->run($node)) {
+        // A start node may carry an initial text typed on the canvas, handed to
+        // the run as the parameters the entry node starts the workflow with.
+        $validated = $request->validate([
+            'text' => ['nullable', 'string', 'max:10000'],
+        ]);
+
+        $parameters = array_key_exists('text', $validated) && $validated['text'] !== null
+            ? ['text' => $validated['text']]
+            : [];
+
+        if (! $runner->run($node, $parameters)) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $node->error]);
 
             return back();

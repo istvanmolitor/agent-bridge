@@ -68,6 +68,13 @@ import {
     update as updateNode,
 } from '@/routes/admin/workflows/nodes';
 
+// The overridable role -> key map stored on a node's settings.
+type KeyMap = Record<string, string>;
+
+// A node type's declared role: a localised label plus its default key.
+type RoleDef = { label: string; key: string };
+type RoleMap = Record<string, RoleDef>;
+
 type NodeType = {
     key: string;
     label: string;
@@ -77,6 +84,8 @@ type NodeType = {
     hasInput: boolean;
     hasOutput: boolean;
     hasSettings: boolean;
+    inputs: RoleMap;
+    outputs: RoleMap;
 };
 
 type NodeSettings = {
@@ -84,6 +93,8 @@ type NodeSettings = {
     agent_id?: number | null;
     workspace_id?: number | null;
     to_file?: boolean;
+    inputs?: KeyMap;
+    outputs?: KeyMap;
 } | null;
 
 type NodeData = {
@@ -407,6 +418,8 @@ const editForm = useForm<{
     agent_id: string;
     workspace_id: string;
     to_file: boolean;
+    inputs: KeyMap;
+    outputs: KeyMap;
 }>({
     name: '',
     description: '',
@@ -414,12 +427,34 @@ const editForm = useForm<{
     agent_id: '',
     workspace_id: '',
     to_file: true,
+    inputs: {},
+    outputs: {},
 });
 
 // Which node types expose settings in the edit dialog.
 const editingIsPrompt = computed(() => editing.value?.type === 'prompt');
 const editingIsAgent = computed(() => editing.value?.type === 'agent');
 const editingIsLog = computed(() => editing.value?.type === 'log');
+
+// The descriptor of the node being edited, used to decide which of the three
+// edit columns (incoming / settings / outgoing) apply to this type.
+const editingType = computed<NodeType | null>(() =>
+    editing.value ? (typeMap.value[editing.value.type] ?? null) : null,
+);
+const editingHasInput = computed(() => editingType.value?.hasInput ?? true);
+const editingHasOutput = computed(() => editingType.value?.hasOutput ?? true);
+
+// The input/output roles the node type declares; their keys are editable while
+// the role names and labels themselves are fixed by the type.
+const inputRoles = computed<RoleMap>(() => editingType.value?.inputs ?? {});
+const outputRoles = computed<RoleMap>(() => editingType.value?.outputs ?? {});
+
+// The role -> default key map a type declares, used to seed and reset fields.
+function roleDefaults(map: RoleMap): KeyMap {
+    return Object.fromEntries(
+        Object.entries(map).map(([role, def]) => [role, def.key]),
+    );
+}
 const promptIdError = computed(
     () => (editForm.errors as Record<string, string>)['settings.prompt_id'],
 );
@@ -448,6 +483,18 @@ watch(editing, (node) => {
                 ? String(node.settings.workspace_id)
                 : '';
         editForm.to_file = node.settings?.to_file ?? true;
+
+        // Start from the type's default key map, then apply any stored override
+        // so cleared/legacy nodes still show the defaults.
+        const type = typeMap.value[node.type];
+        editForm.inputs = {
+            ...roleDefaults(type?.inputs ?? {}),
+            ...(node.settings?.inputs ?? {}),
+        };
+        editForm.outputs = {
+            ...roleDefaults(type?.outputs ?? {}),
+            ...(node.settings?.outputs ?? {}),
+        };
     }
 });
 
@@ -458,27 +505,52 @@ function submitEdit(): void {
 
     editForm
         .transform((data) => {
-            const payload: Record<string, unknown> = {
-                name: data.name,
-                description: data.description,
-            };
+            const settings: Record<string, unknown> = {};
 
             if (editingIsPrompt.value) {
-                payload.settings = {
-                    prompt_id: data.prompt_id ? Number(data.prompt_id) : null,
-                };
+                settings.prompt_id = data.prompt_id
+                    ? Number(data.prompt_id)
+                    : null;
             } else if (editingIsAgent.value) {
-                payload.settings = {
-                    agent_id: data.agent_id ? Number(data.agent_id) : null,
-                    workspace_id: data.workspace_id
-                        ? Number(data.workspace_id)
-                        : null,
-                };
+                settings.agent_id = data.agent_id ? Number(data.agent_id) : null;
+                settings.workspace_id = data.workspace_id
+                    ? Number(data.workspace_id)
+                    : null;
             } else if (editingIsLog.value) {
-                payload.settings = { to_file: data.to_file };
+                settings.to_file = data.to_file;
             }
 
-            return payload;
+            // Incoming/outgoing keys are a role -> key map. A blank field falls
+            // back to the type's default key so a role never loses its key.
+            const resolveKeys = (
+                map: KeyMap,
+                defaults: KeyMap,
+            ): KeyMap =>
+                Object.fromEntries(
+                    Object.keys(map).map((role) => {
+                        const value = (map[role] ?? '').trim();
+                        return [role, value !== '' ? value : (defaults[role] ?? role)];
+                    }),
+                );
+
+            if (editingHasInput.value) {
+                settings.inputs = resolveKeys(
+                    data.inputs,
+                    roleDefaults(editingType.value?.inputs ?? {}),
+                );
+            }
+            if (editingHasOutput.value) {
+                settings.outputs = resolveKeys(
+                    data.outputs,
+                    roleDefaults(editingType.value?.outputs ?? {}),
+                );
+            }
+
+            return {
+                name: data.name,
+                description: data.description,
+                settings,
+            };
         })
         .put(updateNode.url([props.workflow.id, editing.value.id]), {
             preserveScroll: true,
@@ -802,12 +874,13 @@ function confirmDelete(): void {
         :open="editing !== null"
         @update:open="(open) => (editing = open ? editing : null)"
     >
-        <DialogContent>
+        <DialogContent class="sm:max-w-4xl">
             <form class="space-y-6" @submit.prevent="submitEdit">
                 <DialogHeader class="space-y-3">
                     <DialogTitle>Node szerkesztése</DialogTitle>
                     <DialogDescription>
-                        Módosítsd a node nevét vagy leírását.
+                        Add meg a bejövő és kimenő adatok kulcsait, valamint a
+                        node beállításait.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -821,98 +894,210 @@ function confirmDelete(): void {
                     <InputError :message="editForm.errors.name" />
                 </div>
 
-                <div v-if="editingIsPrompt" class="grid gap-2">
-                    <Label for="edit-node-prompt">Prompt</Label>
-                    <Select v-model="editForm.prompt_id">
-                        <SelectTrigger id="edit-node-prompt">
-                            <SelectValue placeholder="Válassz egy promptot" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem
-                                v-for="prompt in prompts"
-                                :key="prompt.id"
-                                :value="String(prompt.id)"
+                <div class="grid gap-6 md:grid-cols-3">
+                    <!-- Bejövő adatok -->
+                    <section class="flex flex-col gap-3">
+                        <h3
+                            class="border-b border-border pb-2 text-sm font-semibold text-ink"
+                        >
+                            Bejövő adatok
+                        </h3>
+
+                        <template v-if="editingHasInput">
+                            <template
+                                v-if="Object.keys(inputRoles).length"
                             >
-                                {{ prompt.name }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <p
-                        v-if="prompts.length === 0"
-                        class="text-xs text-ink-muted"
-                    >
-                        Még nincs prompt. Hozz létre egyet a Promptok oldalon.
-                    </p>
-                    <InputError :message="promptIdError" />
-                </div>
-
-                <template v-if="editingIsAgent">
-                    <div class="grid gap-2">
-                        <Label for="edit-node-agent">Ügynök</Label>
-                        <AgentSelect
-                            v-model="editForm.agent_id"
-                            :agents="agents"
-                            trigger-id="edit-node-agent"
-                            trigger-class="w-full"
-                            placeholder="Válassz egy ügynököt"
-                        />
-                        <p
-                            v-if="agents.length === 0"
-                            class="text-xs text-ink-muted"
-                        >
-                            Még nincs ügynök. Hozz létre egyet az Ügynökök
-                            oldalon.
-                        </p>
-                        <InputError :message="agentIdError" />
-                    </div>
-
-                    <div class="grid gap-2">
-                        <Label for="edit-node-workspace">Munkaterület</Label>
-                        <Select v-model="editForm.workspace_id">
-                            <SelectTrigger id="edit-node-workspace">
-                                <SelectValue
-                                    placeholder="Válassz egy munkaterületet"
-                                />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem
-                                    v-for="workspace in workspaces"
-                                    :key="workspace.id"
-                                    :value="String(workspace.id)"
+                                <p class="text-xs text-ink-muted">
+                                    Milyen kulcsokból olvassa a node az egyes
+                                    bemeneteit.
+                                </p>
+                                <div
+                                    v-for="(def, role) in inputRoles"
+                                    :key="role"
+                                    class="grid gap-1.5"
                                 >
-                                    {{ workspace.name }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <p
-                            v-if="workspaces.length === 0"
-                            class="text-xs text-ink-muted"
-                        >
-                            Még nincs munkaterület. Hozz létre egyet a
-                            Munkaterületek oldalon.
+                                    <Label
+                                        :for="`edit-in-${role}`"
+                                        class="text-xs"
+                                    >
+                                        {{ def.label }}
+                                    </Label>
+                                    <Input
+                                        :id="`edit-in-${role}`"
+                                        v-model="editForm.inputs[role]"
+                                        placeholder="kulcs"
+                                        class="font-mono text-sm"
+                                    />
+                                </div>
+                            </template>
+                            <p v-else class="text-xs text-ink-muted">
+                                Minden bejövő adatot fogad.
+                            </p>
+                        </template>
+                        <p v-else class="text-xs text-ink-muted">
+                            Ennek a node-nak nincs bemenete.
                         </p>
-                        <InputError :message="workspaceIdError" />
-                    </div>
-                </template>
+                    </section>
 
-                <div v-if="editingIsLog" class="flex items-center gap-2">
-                    <Checkbox
-                        id="edit-node-to-file"
-                        v-model="editForm.to_file"
-                    />
-                    <Label for="edit-node-to-file" class="font-normal">
-                        Írás a napló fájlba
-                    </Label>
-                </div>
+                    <!-- Beállítások -->
+                    <section class="flex flex-col gap-3">
+                        <h3
+                            class="border-b border-border pb-2 text-sm font-semibold text-ink"
+                        >
+                            Beállítások
+                        </h3>
 
-                <div class="grid gap-2">
-                    <Label for="edit-node-description">Leírás</Label>
-                    <Textarea
-                        id="edit-node-description"
-                        v-model="editForm.description"
-                        rows="4"
-                    />
-                    <InputError :message="editForm.errors.description" />
+                        <div v-if="editingIsPrompt" class="grid gap-2">
+                            <Label for="edit-node-prompt">Prompt</Label>
+                            <Select v-model="editForm.prompt_id">
+                                <SelectTrigger id="edit-node-prompt">
+                                    <SelectValue
+                                        placeholder="Válassz egy promptot"
+                                    />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem
+                                        v-for="prompt in prompts"
+                                        :key="prompt.id"
+                                        :value="String(prompt.id)"
+                                    >
+                                        {{ prompt.name }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p
+                                v-if="prompts.length === 0"
+                                class="text-xs text-ink-muted"
+                            >
+                                Még nincs prompt. Hozz létre egyet a Promptok
+                                oldalon.
+                            </p>
+                            <InputError :message="promptIdError" />
+                        </div>
+
+                        <template v-if="editingIsAgent">
+                            <div class="grid gap-2">
+                                <Label for="edit-node-agent">Ügynök</Label>
+                                <AgentSelect
+                                    v-model="editForm.agent_id"
+                                    :agents="agents"
+                                    trigger-id="edit-node-agent"
+                                    trigger-class="w-full"
+                                    placeholder="Válassz egy ügynököt"
+                                />
+                                <p
+                                    v-if="agents.length === 0"
+                                    class="text-xs text-ink-muted"
+                                >
+                                    Még nincs ügynök. Hozz létre egyet az
+                                    Ügynökök oldalon.
+                                </p>
+                                <InputError :message="agentIdError" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Label for="edit-node-workspace">
+                                    Munkaterület
+                                </Label>
+                                <Select v-model="editForm.workspace_id">
+                                    <SelectTrigger id="edit-node-workspace">
+                                        <SelectValue
+                                            placeholder="Válassz egy munkaterületet"
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            v-for="workspace in workspaces"
+                                            :key="workspace.id"
+                                            :value="String(workspace.id)"
+                                        >
+                                            {{ workspace.name }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p
+                                    v-if="workspaces.length === 0"
+                                    class="text-xs text-ink-muted"
+                                >
+                                    Még nincs munkaterület. Hozz létre egyet a
+                                    Munkaterületek oldalon.
+                                </p>
+                                <InputError :message="workspaceIdError" />
+                            </div>
+                        </template>
+
+                        <div
+                            v-if="editingIsLog"
+                            class="flex items-center gap-2"
+                        >
+                            <Checkbox
+                                id="edit-node-to-file"
+                                v-model="editForm.to_file"
+                            />
+                            <Label
+                                for="edit-node-to-file"
+                                class="font-normal"
+                            >
+                                Írás a napló fájlba
+                            </Label>
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="edit-node-description">Leírás</Label>
+                            <Textarea
+                                id="edit-node-description"
+                                v-model="editForm.description"
+                                rows="4"
+                            />
+                            <InputError
+                                :message="editForm.errors.description"
+                            />
+                        </div>
+                    </section>
+
+                    <!-- Kimenő adatok -->
+                    <section class="flex flex-col gap-3">
+                        <h3
+                            class="border-b border-border pb-2 text-sm font-semibold text-ink"
+                        >
+                            Kimenő adatok
+                        </h3>
+
+                        <template v-if="editingHasOutput">
+                            <template
+                                v-if="Object.keys(outputRoles).length"
+                            >
+                                <p class="text-xs text-ink-muted">
+                                    Milyen kulcsokkal adja tovább a node az egyes
+                                    kimeneteit.
+                                </p>
+                                <div
+                                    v-for="(def, role) in outputRoles"
+                                    :key="role"
+                                    class="grid gap-1.5"
+                                >
+                                    <Label
+                                        :for="`edit-out-${role}`"
+                                        class="text-xs"
+                                    >
+                                        {{ def.label }}
+                                    </Label>
+                                    <Input
+                                        :id="`edit-out-${role}`"
+                                        v-model="editForm.outputs[role]"
+                                        placeholder="kulcs"
+                                        class="font-mono text-sm"
+                                    />
+                                </div>
+                            </template>
+                            <p v-else class="text-xs text-ink-muted">
+                                A bejövő adatokat változatlanul továbbadja.
+                            </p>
+                        </template>
+                        <p v-else class="text-xs text-ink-muted">
+                            Ennek a node-nak nincs kimenete.
+                        </p>
+                    </section>
                 </div>
 
                 <DialogFooter class="gap-2">

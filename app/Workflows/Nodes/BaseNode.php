@@ -66,6 +66,72 @@ abstract class BaseNode
     }
 
     /**
+     * Default map of input roles to their human label and the parameter key
+     * each one reads from. The role is the fixed name the node's code uses
+     * internally; the label is shown in the editor (localised); the key is the
+     * (overridable) key it is looked up under in the incoming parameters.
+     *
+     * Override in a node type that consumes named inputs, e.g.
+     * ['prompt' => ['label' => 'Prompt', 'key' => 'prompt']].
+     *
+     * @return array<string, array{label: string, key: string}>
+     */
+    public static function inputs(): array
+    {
+        return [];
+    }
+
+    /**
+     * Default map of output roles to their label and the parameter key each one
+     * is written under. Mirrors {@see inputs()} for the values a node hands
+     * downstream, e.g. ['response' => ['label' => 'Válasz', 'key' => 'response']].
+     *
+     * @return array<string, array{label: string, key: string}>
+     */
+    public static function outputs(): array
+    {
+        return [];
+    }
+
+    /**
+     * The parameter key this node reads the given input role from. Honours an
+     * override stored on the node's settings and falls back to the type default
+     * (and finally to the role name itself).
+     */
+    public function inputKey(string $role): string
+    {
+        return $this->resolveKey($role, 'inputs', static::inputs());
+    }
+
+    /**
+     * The parameter key this node writes the given output role under. The
+     * output counterpart of {@see inputKey()}.
+     */
+    public function outputKey(string $role): string
+    {
+        return $this->resolveKey($role, 'outputs', static::outputs());
+    }
+
+    /**
+     * Resolve the effective key for a role: a non-empty override on the node's
+     * settings wins, then the type default, then the role name itself.
+     *
+     * @param  array<string, array{label: string, key: string}>  $defaults
+     */
+    private function resolveKey(string $role, string $bag, array $defaults): string
+    {
+        $override = $this->node->settings[$bag][$role] ?? null;
+
+        if (is_string($override) && $override !== '') {
+            return $override;
+        }
+
+        $default = $defaults[$role]['key'] ?? null;
+
+        return is_string($default) && $default !== '' ? $default : $role;
+    }
+
+    /**
      * Validate the incoming parameters against {@see rules()}.
      *
      * @param  array<string, mixed>  $parameters
@@ -140,7 +206,7 @@ abstract class BaseNode
     /**
      * Serialise the type descriptor for the frontend.
      *
-     * @return array{key: string, label: string, description: string, icon: string, color: string, hasInput: bool, hasOutput: bool, hasSettings: bool}
+     * @return array{key: string, label: string, description: string, icon: string, color: string, hasInput: bool, hasOutput: bool, hasSettings: bool, inputs: array<string, array{label: string, key: string}>, outputs: array<string, array{label: string, key: string}>}
      */
     public static function toArray(): array
     {
@@ -153,6 +219,8 @@ abstract class BaseNode
             'hasInput' => static::hasInput(),
             'hasOutput' => static::hasOutput(),
             'hasSettings' => static::settingsRules() !== [],
+            'inputs' => static::inputs(),
+            'outputs' => static::outputs(),
         ];
     }
 }

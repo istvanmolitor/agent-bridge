@@ -28,8 +28,18 @@ class HttpRequestNode extends BaseNode
     public function rules(): array
     {
         return [
-            'url' => ['required', 'url'],
+            $this->inputKey('url') => ['required', 'url'],
         ];
+    }
+
+    /**
+     * Reads the target URL from the "url" key.
+     *
+     * @return array<string, array{label: string, key: string}>
+     */
+    public static function inputs(): array
+    {
+        return ['url' => ['label' => 'URL', 'key' => 'url']];
     }
 
     public static function key(): string

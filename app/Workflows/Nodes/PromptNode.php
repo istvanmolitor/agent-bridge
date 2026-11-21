@@ -21,7 +21,17 @@ class PromptNode extends BaseNode
             ? Prompt::find($promptId)?->content
             : null;
 
-        return array_merge($parameters, ['prompt' => $content ?? '']);
+        return array_merge($parameters, [$this->outputKey('prompt') => $content ?? '']);
+    }
+
+    /**
+     * Hands the resolved prompt text downstream under the "prompt" key.
+     *
+     * @return array<string, array{label: string, key: string}>
+     */
+    public static function outputs(): array
+    {
+        return ['prompt' => ['label' => 'Prompt', 'key' => 'prompt']];
     }
 
     /**

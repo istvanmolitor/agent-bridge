@@ -34,6 +34,13 @@ class WorkflowNodeRequest extends FormRequest
         if ($this->isMethod('put')) {
             $rules['settings'] = ['nullable', 'array'];
 
+            // The incoming/outgoing data keys are available on every node type,
+            // independent of its own type-specific settings.
+            $rules['settings.inputs'] = ['nullable', 'array'];
+            $rules['settings.inputs.*'] = ['string', 'max:255'];
+            $rules['settings.outputs'] = ['nullable', 'array'];
+            $rules['settings.outputs.*'] = ['string', 'max:255'];
+
             $node = $this->route('node');
             $class = NodeRegistry::classFor($node instanceof WorkflowNode ? $node->type : '');
 

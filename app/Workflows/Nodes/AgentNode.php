@@ -26,19 +26,23 @@ class AgentNode extends BaseNode
         $agent = is_int($agentId) ? Agent::find($agentId) : null;
         $workspace = is_int($workspaceId) ? Workspace::find($workspaceId) : null;
 
+        $prompt = $parameters[$this->inputKey('prompt')] ?? '';
+
         // Without a configured agent and workspace there is nothing to run;
         // forward the parameters with an empty response rather than failing.
         if ($agent === null || $workspace === null) {
-            return array_merge($parameters, ['response' => '']);
+            return array_merge($parameters, [
+                $this->outputKey('prompt') => $prompt,
+                $this->outputKey('response') => '',
+            ]);
         }
 
-        $response = app(AgentService::class)->prompt(
-            $parameters['prompt'] ?? '',
-            $agent,
-            $workspace,
-        );
+        $response = app(AgentService::class)->prompt($prompt, $agent, $workspace);
 
-        return array_merge($parameters, ['response' => $response['result'] ?? '']);
+        return array_merge($parameters, [
+            $this->outputKey('prompt') => $prompt,
+            $this->outputKey('response') => $response['result'] ?? '',
+        ]);
     }
 
     /**
@@ -49,7 +53,31 @@ class AgentNode extends BaseNode
     public function rules(): array
     {
         return [
-            'prompt' => ['required', 'string'],
+            $this->inputKey('prompt') => ['required', 'string'],
+        ];
+    }
+
+    /**
+     * Reads the prompt to work on from the "prompt" key.
+     *
+     * @return array<string, array{label: string, key: string}>
+     */
+    public static function inputs(): array
+    {
+        return ['prompt' => ['label' => 'Prompt', 'key' => 'prompt']];
+    }
+
+    /**
+     * Hands its answer downstream under the "response" key, and the prompt it
+     * worked on back under the "prompt" key.
+     *
+     * @return array<string, array{label: string, key: string}>
+     */
+    public static function outputs(): array
+    {
+        return [
+            'prompt' => ['label' => 'Prompt', 'key' => 'prompt'],
+            'response' => ['label' => 'Válasz', 'key' => 'response'],
         ];
     }
 
